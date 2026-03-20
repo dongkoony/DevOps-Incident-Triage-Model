@@ -18,10 +18,12 @@
 3. Evaluate
    - accuracy, macro F1, per-label metrics
    - confusion matrix CSV(+PNG)
+   - confidence threshold metrics(자동 분류 커버리지 vs 수동 검토 비율)
    - sample prediction dump
 4. Inference & Serving
    - CLI 단건/배치 예측
    - FastAPI `/predict` API
+   - 저신뢰 예측을 `needs_human_review`로 라우팅하는 threshold gating
    - Optional Gradio app
 5. Publish
    - Hugging Face Hub 모델 리포지토리 업로드
