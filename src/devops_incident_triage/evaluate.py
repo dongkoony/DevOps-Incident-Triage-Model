@@ -11,6 +11,8 @@ from datasets import load_dataset
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix, f1_score
 from transformers import AutoModelForSequenceClassification, AutoTokenizer, Trainer
 
+from devops_incident_triage.triage_policy import validate_confidence_threshold
+
 
 def build_arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Evaluate a trained DevOps incident classifier.")
@@ -19,6 +21,12 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--report-dir", type=Path, default=Path("reports"))
     parser.add_argument("--max-length", type=int, default=256)
     parser.add_argument("--sample-size", type=int, default=20)
+    parser.add_argument(
+        "--confidence-thresholds",
+        type=str,
+        default="0.4,0.5,0.6,0.7",
+        help="Comma-separated thresholds for human-review gating analysis.",
+    )
     return parser
 
 
@@ -43,6 +51,23 @@ def maybe_plot_confusion_matrix(cm_df: pd.DataFrame, output_path: Path) -> None:
     plt.tight_layout()
     plt.savefig(output_path, dpi=180)
     plt.close()
+
+
+def parse_thresholds(raw_thresholds: str) -> list[float]:
+    thresholds: list[float] = []
+    for token in raw_thresholds.split(","):
+        value = float(token.strip())
+        validate_confidence_threshold(value)
+        thresholds.append(value)
+    if not thresholds:
+        raise ValueError("confidence_thresholds must not be empty")
+    return sorted(set(thresholds))
+
+
+def stable_softmax(logits: np.ndarray) -> np.ndarray:
+    shifted = logits - np.max(logits, axis=1, keepdims=True)
+    exp_values = np.exp(shifted)
+    return exp_values / np.sum(exp_values, axis=1, keepdims=True)
 
 
 def main() -> None:
@@ -70,8 +95,11 @@ def main() -> None:
 
     trainer = Trainer(model=model, processing_class=tokenizer)
     predictions = trainer.predict(tokenized)
+    logits_all = predictions.predictions
+    probs_all = stable_softmax(logits_all)
+    confidence_all = np.max(probs_all, axis=1)
     y_true = predictions.label_ids
-    y_pred = np.argmax(predictions.predictions, axis=-1)
+    y_pred = np.argmax(probs_all, axis=-1)
 
     overall_metrics = {
         "accuracy": float(accuracy_score(y_true, y_pred)),
@@ -103,12 +131,39 @@ def main() -> None:
     cm_df.to_csv(args.report_dir / "confusion_matrix.csv")
     maybe_plot_confusion_matrix(cm_df, args.report_dir / "figures" / "confusion_matrix.png")
 
+    thresholds = parse_thresholds(args.confidence_thresholds)
+    threshold_metrics: list[dict[str, Any]] = []
+    for threshold in thresholds:
+        mask = confidence_all >= threshold
+        accepted_count = int(np.sum(mask))
+        total_count = int(len(y_true))
+        manual_review_count = total_count - accepted_count
+        coverage = accepted_count / total_count if total_count else 0.0
+
+        if accepted_count > 0:
+            accepted_y_true = y_true[mask]
+            accepted_y_pred = y_pred[mask]
+            auto_accuracy = float(accuracy_score(accepted_y_true, accepted_y_pred))
+            auto_macro_f1 = float(f1_score(accepted_y_true, accepted_y_pred, average="macro"))
+        else:
+            auto_accuracy = None
+            auto_macro_f1 = None
+
+        threshold_metrics.append(
+            {
+                "threshold": threshold,
+                "coverage": float(coverage),
+                "auto_predictions": accepted_count,
+                "manual_review_predictions": manual_review_count,
+                "auto_accuracy": auto_accuracy,
+                "auto_macro_f1": auto_macro_f1,
+            }
+        )
+
     sample_rows = []
     max_rows = min(args.sample_size, len(dataset))
     for i in range(max_rows):
-        logits = predictions.predictions[i]
-        logits = logits - np.max(logits)
-        probs = np.exp(logits) / np.exp(logits).sum()
+        probs = probs_all[i]
         label_scores = {labels_order[j]: float(probs[j]) for j in range(len(labels_order))}
         pred_idx = int(y_pred[i])
         true_idx = int(y_true[i])
@@ -128,11 +183,13 @@ def main() -> None:
 
     write_json(overall_metrics, args.report_dir / "evaluation_metrics.json")
     write_json(per_label_report, args.report_dir / "per_label_metrics.json")
+    write_json({"threshold_metrics": threshold_metrics}, args.report_dir / "threshold_metrics.json")
     summary = {
         "overall_metrics": overall_metrics,
         "labels": labels_order,
         "artifacts": {
             "per_label": str(args.report_dir / "per_label_metrics.json"),
+            "threshold_metrics": str(args.report_dir / "threshold_metrics.json"),
             "confusion_matrix_csv": str(args.report_dir / "confusion_matrix.csv"),
             "confusion_matrix_png": str(args.report_dir / "figures" / "confusion_matrix.png"),
             "sample_predictions": str(args.report_dir / "sample_predictions.jsonl"),

@@ -115,12 +115,14 @@ uv run ditri-train \
 uv run ditri-eval \
   --model-path models/devops-incident-triage \
   --data-dir data/processed \
-  --report-dir reports
+  --report-dir reports \
+  --confidence-thresholds 0.4,0.5,0.6,0.7
 ```
 
 생성 산출물:
 - `reports/evaluation_metrics.json`
 - `reports/per_label_metrics.json`
+- `reports/threshold_metrics.json` (자동 분류 커버리지/인간 검토 비율/임계값별 성능)
 - `reports/confusion_matrix.csv`
 - `reports/figures/confusion_matrix.png` (matplotlib/seaborn 설치 시)
 - `reports/sample_predictions.jsonl`
@@ -130,6 +132,8 @@ uv run ditri-eval \
 ```bash
 uv run ditri-predict \
   --model-path models/devops-incident-triage \
+  --confidence-threshold 0.6 \
+  --review-queue sre_manual_triage \
   --text "EKS worker nodes became NotReady after CNI upgrade."
 ```
 
@@ -138,6 +142,7 @@ uv run ditri-predict \
 ```bash
 uv run ditri-predict \
   --model-path models/devops-incident-triage \
+  --confidence-threshold 0.6 \
   --input-file data/sample/incidents_synthetic.csv \
   --text-column text \
   --output-file reports/batch_predictions.jsonl
@@ -146,7 +151,7 @@ uv run ditri-predict \
 ## 6) FastAPI Serving
 
 ```bash
-uv run ditri-api
+CONFIDENCE_THRESHOLD=0.6 REVIEW_QUEUE=sre_manual_triage uv run ditri-api
 ```
 
 기본 주소: `http://127.0.0.1:8000`
@@ -170,7 +175,12 @@ curl -s -X POST http://127.0.0.1:8000/predict \
 ```json
 {
   "label": "aws_iam_network",
+  "predicted_label": "aws_iam_network",
+  "final_label": "aws_iam_network",
+  "needs_human_review": false,
+  "recommended_queue": "aws_iam_network",
   "confidence": 0.84,
+  "confidence_threshold": 0.6,
   "scores": [
     {"label": "aws_iam_network", "score": 0.84},
     {"label": "cicd_pipeline", "score": 0.09}
@@ -247,6 +257,7 @@ GitHub Actions (`.github/workflows/ci.yml`)에서 다음을 수행합니다.
 ├─ src/devops_incident_triage/
 │  ├─ config.py
 │  ├─ labels.py
+│  ├─ triage_policy.py
 │  ├─ ingest_raw.py
 │  ├─ data_prep.py
 │  ├─ train.py
