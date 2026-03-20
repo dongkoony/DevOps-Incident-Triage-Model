@@ -1,12 +1,14 @@
 PYTHON_VERSION=3.12
 MODEL_DIR=models/devops-incident-triage
 DATA_INPUT=data/sample/incidents_synthetic.csv
+RAW_INPUT=data/raw/incidents_template.csv
 
-.PHONY: help install prep-data train eval predict api gradio docker-build docker-run test lint
+.PHONY: help install ingest-raw prep-data train eval predict api gradio docker-build docker-run test lint
 
 help:
 	@echo "Targets:"
 	@echo "  install      Install dependencies with uv"
+	@echo "  ingest-raw   Normalize/mask raw incidents into training-ready CSV"
 	@echo "  prep-data    Prepare train/validation/test splits"
 	@echo "  train        Train baseline model"
 	@echo "  eval         Evaluate trained model"
@@ -21,6 +23,9 @@ help:
 install:
 	uv python install $(PYTHON_VERSION)
 	uv sync --extra dev --extra api --extra viz --extra peft --extra gradio
+
+ingest-raw:
+	uv run ditri-ingest-raw --input-path $(RAW_INPUT) --output-canonical-path data/raw/incidents_canonical.csv --output-training-path data/raw/incidents_training_ready.csv --report-path reports/raw_ingestion_report.json
 
 prep-data:
 	uv run ditri-data-prep --input-path $(DATA_INPUT) --output-dir data/processed --seed 42

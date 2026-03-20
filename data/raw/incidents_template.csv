@@ -1,0 +1,4 @@
+incident_id,occurred_at,source,summary,details,service,environment,severity,region,label
+INC-2026-0001,2026-03-20T01:25:00Z,pagerduty,"EKS nodes became NotReady after CNI rollout","On-call: kim.devops@example.com 확인 요청, node IP 10.24.8.14 unreachable",platform,prod,P1,ap-northeast-2,k8s_cluster
+INC-2026-0002,2026-03-20T02:02:00Z,github-actions,"Release workflow failed with AssumeRole AccessDenied","AWS account 123456789012 deployment role trust policy mismatch",release,prod,P1,ap-northeast-2,aws_iam_network
+INC-2026-0003,2026-03-20T03:12:00Z,grafana,"Pager alert storm from duplicated scrape targets","CPU anomaly alert duplicated across namespaces",monitoring,prod,P2,ap-northeast-2,observability_alerting
