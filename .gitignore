@@ -1,0 +1,34 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+.Python
+.venv/
+venv/
+
+# Tooling
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+.DS_Store
+
+# Environment
+.env
+.env.*
+
+# Build / package
+build/
+dist/
+*.egg-info/
+
+# Artifacts
+data/processed/*
+!data/processed/.gitkeep
+models/*
+!models/.gitkeep
+reports/*.json
+reports/*.csv
+reports/figures/*
+!reports/figures/.gitkeep

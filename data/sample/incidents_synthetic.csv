@@ -1,0 +1,57 @@
+text,label,source
+"Pod pending for 12 minutes because no nodes match node selector in eks-main.",k8s_cluster,synthetic
+"Kubernetes scheduler reports 0/6 nodes available due to insufficient cpu.",k8s_cluster,synthetic
+"Kubelet status flipped to NotReady after CNI daemonset restart.",k8s_cluster,synthetic
+"Control plane API latency spiked and readiness probes started failing cluster-wide.",k8s_cluster,synthetic
+"DaemonSet rollout stuck because taints were not tolerated on new node pool.",k8s_cluster,synthetic
+"CoreDNS crashloop caused service discovery failures between pods.",k8s_cluster,synthetic
+"HPA unable to scale workload because metrics-server returned no data.",k8s_cluster,synthetic
+"Node drain operation evicted critical pods and stateful set recovery stalled.",k8s_cluster,synthetic
+"GitHub Actions build job failed at test step with exit code 1.",cicd_pipeline,synthetic
+"Jenkins pipeline could not fetch artifact from object storage due to 403.",cicd_pipeline,synthetic
+"GitLab CI stage timed out during docker image push.",cicd_pipeline,synthetic
+"Release workflow stopped because terraform plan detected backend lock.",cicd_pipeline,synthetic
+"Argo workflow template validation failed after yaml schema change.",cicd_pipeline,synthetic
+"Integration test stage failed because secret env var was missing in runner.",cicd_pipeline,synthetic
+"Static analysis gate blocked merge due to high severity findings.",cicd_pipeline,synthetic
+"Pipeline cache corruption caused repeated dependency install failures.",cicd_pipeline,synthetic
+"IAM role for deployment bot lacks sts:AssumeRole permission in prod account.",aws_iam_network,synthetic
+"Security group update blocked traffic from ALB to EKS node targets.",aws_iam_network,synthetic
+"Route table misconfiguration dropped outbound packets from private subnet.",aws_iam_network,synthetic
+"NACL deny rule prevented database connectivity from application subnet.",aws_iam_network,synthetic
+"AWS load balancer health checks fail after target group port drift.",aws_iam_network,synthetic
+"EC2 instance profile missing SSM policy so bootstrap script cannot read parameters.",aws_iam_network,synthetic
+"Cross-account access to ECR denied after trust policy regression.",aws_iam_network,synthetic
+"VPC endpoint policy rejected calls to cloudwatch logs API.",aws_iam_network,synthetic
+"Helm upgrade failed with immutable field change in deployment selector.",deployment_release,synthetic
+"Canary rollout auto-paused when 5xx rate exceeded configured threshold.",deployment_release,synthetic
+"ArgoCD sync reported out-of-sync resources after hotfix on cluster.",deployment_release,synthetic
+"Blue-green switch routed traffic to old service because annotation was missing.",deployment_release,synthetic
+"Release job applied config map with invalid key and pods failed to start.",deployment_release,synthetic
+"Rollback failed because previous image tag was deleted from registry.",deployment_release,synthetic
+"Feature flag mismatch between app and worker caused partial outage after deploy.",deployment_release,synthetic
+"Post-deploy smoke test failed due to missing migration step in release plan.",deployment_release,synthetic
+"Docker daemon on runner exited unexpectedly during image build.",container_runtime,synthetic
+"ImagePullBackOff occurred because registry token expired.",container_runtime,synthetic
+"Container repeatedly OOMKilled despite horizontal scaling.",container_runtime,synthetic
+"containerd failed to create task due to shim disconnected error.",container_runtime,synthetic
+"Runtime reported overlay filesystem no space left on device.",container_runtime,synthetic
+"Init container failed because base image digest was not found.",container_runtime,synthetic
+"Cgroup memory limit misconfiguration throttled critical background workers.",container_runtime,synthetic
+"Long startup command exceeded container health check timeout.",container_runtime,synthetic
+"Prometheus fired duplicate alerts due to overlapping scrape targets.",observability_alerting,synthetic
+"Loki ingest lag delayed incident timeline visibility by 15 minutes.",observability_alerting,synthetic
+"Alertmanager routing misconfiguration sent paging alerts to wrong on-call team.",observability_alerting,synthetic
+"OpenTelemetry collector dropped traces after queue saturation.",observability_alerting,synthetic
+"Dashboards showed stale metrics because remote write endpoint was unreachable.",observability_alerting,synthetic
+"False positive cpu anomaly rule generated alert storm overnight.",observability_alerting,synthetic
+"Log parser regression removed severity field from incident logs.",observability_alerting,synthetic
+"SLO burn-rate alert was muted unexpectedly during active production incident.",observability_alerting,synthetic
+"Postgres replication lag exceeded 40 seconds during backup window.",database_state,synthetic
+"Application connection pool exhausted and requests timed out to primary DB.",database_state,synthetic
+"Migration job held metadata lock causing write latency spike.",database_state,synthetic
+"Read replica entered read-only state after failover rehearsal.",database_state,synthetic
+"Redis maxmemory policy evicted hot keys and increased error rate.",database_state,synthetic
+"Database disk usage reached 95 percent and autovacuum could not catch up.",database_state,synthetic
+"Connection reset errors increased after TLS certificate rotation on database endpoint.",database_state,synthetic
+"Deadlock frequency rose after schema change in order table.",database_state,synthetic
