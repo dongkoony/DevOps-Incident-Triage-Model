@@ -205,6 +205,7 @@ GitHub Actions (`.github/workflows/ci.yml`)에서 다음을 수행합니다.
 
 - 브랜치 전략: `docs/branch_strategy.md`
 - PR 템플릿: `.github/pull_request_template.md`
+- 릴리스 체크리스트: `docs/release_checklist.md`
 
 핵심:
 - `main`: 릴리스 기준
@@ -237,7 +238,9 @@ GitHub Actions (`.github/workflows/ci.yml`)에서 다음을 수행합니다.
 ├─ docs/
 │  ├─ model_card.md
 │  ├─ architecture.md
-│  └─ portfolio_notes.md
+│  ├─ portfolio_notes.md
+│  ├─ release_checklist.md
+│  └─ portfolio_evidence.md
 └─ tests/
 ```
 
@@ -254,3 +257,10 @@ GitHub Actions (`.github/workflows/ci.yml`)에서 다음을 수행합니다.
 3. 멀티라벨 실험과 threshold 튜닝 추가
 4. Drift/성능 저하 모니터링 대시보드 연동
 5. HF Space와 API 배포 자동화(CI/CD) 연결
+
+## 15) 운영형 릴리스 루틴 (권장)
+
+1. `feature/* -> develop` PR로 기능 단위 통합
+2. `release/vX.Y.Z` 생성 후 `docs/release_checklist.md` 기준 검증
+3. `release/vX.Y.Z -> main` PR 머지 + 태그 생성
+4. 실행 증거/지표를 `docs/portfolio_evidence.md`에 기록
