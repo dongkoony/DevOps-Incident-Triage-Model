@@ -4,15 +4,18 @@ import os
 from pathlib import Path
 from typing import Any
 
-import numpy as np
 import torch
 import uvicorn
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
+from devops_incident_triage.triage_policy import decide_triage, validate_confidence_threshold
+
 MODEL_PATH = Path(os.getenv("MODEL_PATH", "models/devops-incident-triage"))
 MAX_LENGTH = int(os.getenv("MAX_LENGTH", "256"))
+CONFIDENCE_THRESHOLD = float(os.getenv("CONFIDENCE_THRESHOLD", "0.55"))
+REVIEW_QUEUE = os.getenv("REVIEW_QUEUE", "manual_triage")
 
 app = FastAPI(
     title="DevOps Incident Triage API",
@@ -41,7 +44,12 @@ class ScoreItem(BaseModel):
 
 class PredictResponse(BaseModel):
     label: str
+    predicted_label: str
+    final_label: str
+    needs_human_review: bool
+    recommended_queue: str
     confidence: float
+    confidence_threshold: float
     scores: list[ScoreItem]
 
 
@@ -69,20 +77,31 @@ def _predict(text: str) -> PredictResponse:
         logits = _model(**encoded).logits
         probs = torch.softmax(logits, dim=-1).cpu().numpy()[0]
 
-    pred_idx = int(np.argmax(probs))
     ordered_scores = [
         ScoreItem(label=_id2label[i], score=float(probs[i])) for i in range(len(_id2label))
     ]
     ordered_scores = sorted(ordered_scores, key=lambda x: x.score, reverse=True)
+    score_map = {item.label: item.score for item in ordered_scores}
+    triage = decide_triage(
+        score_map,
+        confidence_threshold=CONFIDENCE_THRESHOLD,
+        review_queue=REVIEW_QUEUE,
+    )
     return PredictResponse(
-        label=_id2label[pred_idx],
-        confidence=float(probs[pred_idx]),
+        label=triage["final_label"],
+        predicted_label=triage["predicted_label"],
+        final_label=triage["final_label"],
+        needs_human_review=triage["needs_human_review"],
+        recommended_queue=triage["recommended_queue"],
+        confidence=triage["confidence"],
+        confidence_threshold=triage["confidence_threshold"],
         scores=ordered_scores,
     )
 
 
 @app.on_event("startup")
 def startup_event() -> None:
+    validate_confidence_threshold(CONFIDENCE_THRESHOLD)
     if MODEL_PATH.exists():
         _load_artifacts()
 
@@ -94,6 +113,8 @@ def health() -> dict[str, Any]:
         "status": "ok",
         "model_loaded": loaded,
         "model_path": str(MODEL_PATH),
+        "confidence_threshold": CONFIDENCE_THRESHOLD,
+        "review_queue": REVIEW_QUEUE,
     }
 
 

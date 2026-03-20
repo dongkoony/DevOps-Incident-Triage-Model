@@ -6,9 +6,10 @@ import json
 from pathlib import Path
 from typing import Any
 
-import numpy as np
 import torch
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
+
+from devops_incident_triage.triage_policy import decide_triage, validate_confidence_threshold
 
 
 def load_texts_from_file(input_file: Path, text_column: str = "text") -> list[str]:
@@ -52,7 +53,10 @@ def predict_batch(
     model: AutoModelForSequenceClassification,
     tokenizer: AutoTokenizer,
     max_length: int = 256,
+    confidence_threshold: float = 0.0,
+    review_queue: str = "manual_triage",
 ) -> list[dict[str, Any]]:
+    validate_confidence_threshold(confidence_threshold)
     id2label = {int(k): v for k, v in model.config.id2label.items()}
     encoded = tokenizer(
         texts,
@@ -68,13 +72,21 @@ def predict_batch(
 
     results: list[dict[str, Any]] = []
     for text, probs in zip(texts, probabilities, strict=True):
-        pred_idx = int(np.argmax(probs))
         score_map = {id2label[i]: float(probs[i]) for i in range(len(id2label))}
+        triage = decide_triage(
+            score_map,
+            confidence_threshold=confidence_threshold,
+            review_queue=review_queue,
+        )
         results.append(
             {
                 "text": text,
-                "predicted_label": id2label[pred_idx],
-                "confidence": float(probs[pred_idx]),
+                "predicted_label": triage["predicted_label"],
+                "final_label": triage["final_label"],
+                "confidence": triage["confidence"],
+                "confidence_threshold": triage["confidence_threshold"],
+                "needs_human_review": triage["needs_human_review"],
+                "recommended_queue": triage["recommended_queue"],
                 "scores": score_map,
             }
         )
@@ -106,6 +118,18 @@ def build_arg_parser() -> argparse.ArgumentParser:
         help="Optional output file for batch predictions (.jsonl).",
     )
     parser.add_argument("--max-length", type=int, default=256)
+    parser.add_argument(
+        "--confidence-threshold",
+        type=float,
+        default=0.0,
+        help="If confidence is below this threshold, mark as needs_human_review.",
+    )
+    parser.add_argument(
+        "--review-queue",
+        type=str,
+        default="manual_triage",
+        help="Queue name used when prediction falls below confidence threshold.",
+    )
     return parser
 
 
@@ -122,7 +146,14 @@ def main() -> None:
     texts = list(args.text or [])
     if args.input_file:
         texts.extend(load_texts_from_file(args.input_file, text_column=args.text_column))
-    results = predict_batch(texts, model=model, tokenizer=tokenizer, max_length=args.max_length)
+    results = predict_batch(
+        texts,
+        model=model,
+        tokenizer=tokenizer,
+        max_length=args.max_length,
+        confidence_threshold=args.confidence_threshold,
+        review_queue=args.review_queue,
+    )
 
     if args.output_file:
         write_jsonl(results, args.output_file)
