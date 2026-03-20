@@ -32,3 +32,5 @@ reports/*.json
 reports/*.csv
 reports/figures/*
 !reports/figures/.gitkeep
+data/raw/incidents_canonical.csv
+data/raw/incidents_training_ready.csv

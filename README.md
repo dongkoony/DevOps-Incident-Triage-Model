@@ -63,6 +63,24 @@ uv sync --extra dev --extra api --extra viz --extra peft --extra gradio
 
 ### 데이터 준비
 
+실데이터(비식별화 CSV)가 있다면 먼저 ingestion을 수행하세요.
+
+```bash
+uv run ditri-ingest-raw \
+  --input-path data/raw/incidents_template.csv \
+  --output-canonical-path data/raw/incidents_canonical.csv \
+  --output-training-path data/raw/incidents_training_ready.csv \
+  --report-path reports/raw_ingestion_report.json
+```
+
+그 다음 아래처럼 split 생성:
+
+```bash
+uv run ditri-data-prep --input-path data/raw/incidents_training_ready.csv --output-dir data/processed --seed 42
+```
+
+synthetic 스타터를 쓸 경우:
+
 ```bash
 # 샘플 CSV를 train/validation/test JSONL로 분할
 uv run ditri-data-prep --input-path data/sample/incidents_synthetic.csv --output-dir data/processed --seed 42
@@ -206,6 +224,7 @@ GitHub Actions (`.github/workflows/ci.yml`)에서 다음을 수행합니다.
 - 브랜치 전략: `docs/branch_strategy.md`
 - PR 템플릿: `.github/pull_request_template.md`
 - 릴리스 체크리스트: `docs/release_checklist.md`
+- 실데이터 ingestion 가이드: `docs/real_data_ingestion.md`
 
 핵심:
 - `main`: 릴리스 기준
@@ -228,6 +247,7 @@ GitHub Actions (`.github/workflows/ci.yml`)에서 다음을 수행합니다.
 ├─ src/devops_incident_triage/
 │  ├─ config.py
 │  ├─ labels.py
+│  ├─ ingest_raw.py
 │  ├─ data_prep.py
 │  ├─ train.py
 │  ├─ evaluate.py
@@ -240,7 +260,8 @@ GitHub Actions (`.github/workflows/ci.yml`)에서 다음을 수행합니다.
 │  ├─ architecture.md
 │  ├─ portfolio_notes.md
 │  ├─ release_checklist.md
-│  └─ portfolio_evidence.md
+│  ├─ portfolio_evidence.md
+│  └─ real_data_ingestion.md
 └─ tests/
 ```
 

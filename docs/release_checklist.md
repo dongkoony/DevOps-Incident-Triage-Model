@@ -23,6 +23,16 @@ uv run ditri-data-prep --input-path data/sample/incidents_synthetic.csv --output
 
 ## 3) 학습/평가 산출물 검증
 
+실데이터 수집 파이프라인 사용 시:
+
+```bash
+uv run ditri-ingest-raw \
+  --input-path data/raw/incidents_template.csv \
+  --output-canonical-path data/raw/incidents_canonical.csv \
+  --output-training-path data/raw/incidents_training_ready.csv \
+  --report-path reports/raw_ingestion_report.json
+```
+
 ```bash
 uv run ditri-train \
   --data-dir data/processed \
