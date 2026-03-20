@@ -20,7 +20,7 @@ REVIEW_QUEUE = os.getenv("REVIEW_QUEUE", "manual_triage")
 app = FastAPI(
     title="DevOps Incident Triage API",
     description="Classify DevOps incident text into triage categories.",
-    version="0.1.0",
+    version="0.2.0",
 )
 
 _model: AutoModelForSequenceClassification | None = None
