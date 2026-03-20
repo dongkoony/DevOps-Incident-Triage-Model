@@ -22,6 +22,7 @@
 - 권장: 온콜 triage 보조, 티켓 자동 태깅 보조
 - 비권장: 완전 자동 의사결정, 인적 검토 없는 조치 실행
 - 운영 권장: confidence threshold gating을 통해 저신뢰 예측은 `needs_human_review`로 보냄
+- 운영 권장: FastAPI `/predict/batch` 사용 시 배치 상한(`BATCH_MAX_ITEMS`)을 둬 API 안정성 확보
 
 ## Training Data
 
