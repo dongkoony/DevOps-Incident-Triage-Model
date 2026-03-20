@@ -151,7 +151,7 @@ uv run ditri-predict \
 ## 6) FastAPI Serving
 
 ```bash
-CONFIDENCE_THRESHOLD=0.6 REVIEW_QUEUE=sre_manual_triage uv run ditri-api
+CONFIDENCE_THRESHOLD=0.6 REVIEW_QUEUE=sre_manual_triage BATCH_MAX_ITEMS=32 uv run ditri-api
 ```
 
 기본 주소: `http://127.0.0.1:8000`
@@ -187,6 +187,25 @@ curl -s -X POST http://127.0.0.1:8000/predict \
   ]
 }
 ```
+
+### Batch Predict API
+
+```bash
+curl -s -X POST http://127.0.0.1:8000/predict/batch \
+  -H "Content-Type: application/json" \
+  -d '{
+    "texts": [
+      "EKS worker nodes became NotReady after CNI upgrade.",
+      "Ambiguous release failure: timeout, permission denied, and flaky smoke test."
+    ]
+  }'
+```
+
+예시 응답 핵심 필드:
+- `total`: 요청 건수
+- `auto_route_count`: 자동 라우팅 건수
+- `human_review_count`: 수동 검토 필요 건수
+- `predictions`: 각 건의 상세 예측(`needs_human_review`, `recommended_queue` 포함)
 
 ## 7) Optional Gradio App
 

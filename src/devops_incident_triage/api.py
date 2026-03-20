@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import os
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
 
@@ -16,11 +18,22 @@ MODEL_PATH = Path(os.getenv("MODEL_PATH", "models/devops-incident-triage"))
 MAX_LENGTH = int(os.getenv("MAX_LENGTH", "256"))
 CONFIDENCE_THRESHOLD = float(os.getenv("CONFIDENCE_THRESHOLD", "0.55"))
 REVIEW_QUEUE = os.getenv("REVIEW_QUEUE", "manual_triage")
+BATCH_MAX_ITEMS = int(os.getenv("BATCH_MAX_ITEMS", "32"))
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+    validate_confidence_threshold(CONFIDENCE_THRESHOLD)
+    if MODEL_PATH.exists():
+        _load_artifacts()
+    yield
+
 
 app = FastAPI(
     title="DevOps Incident Triage API",
     description="Classify DevOps incident text into triage categories.",
     version="0.2.0",
+    lifespan=lifespan,
 )
 
 _model: AutoModelForSequenceClassification | None = None
@@ -51,6 +64,21 @@ class PredictResponse(BaseModel):
     confidence: float
     confidence_threshold: float
     scores: list[ScoreItem]
+
+
+class BatchPredictRequest(BaseModel):
+    texts: list[str] = Field(
+        ...,
+        min_length=1,
+        description="List of incident summaries or error log texts.",
+    )
+
+
+class BatchPredictResponse(BaseModel):
+    total: int
+    auto_route_count: int
+    human_review_count: int
+    predictions: list[PredictResponse]
 
 
 def _load_artifacts() -> None:
@@ -99,13 +127,6 @@ def _predict(text: str) -> PredictResponse:
     )
 
 
-@app.on_event("startup")
-def startup_event() -> None:
-    validate_confidence_threshold(CONFIDENCE_THRESHOLD)
-    if MODEL_PATH.exists():
-        _load_artifacts()
-
-
 @app.get("/health")
 def health() -> dict[str, Any]:
     loaded = _model is not None
@@ -115,6 +136,7 @@ def health() -> dict[str, Any]:
         "model_path": str(MODEL_PATH),
         "confidence_threshold": CONFIDENCE_THRESHOLD,
         "review_queue": REVIEW_QUEUE,
+        "batch_max_items": BATCH_MAX_ITEMS,
     }
 
 
@@ -124,6 +146,43 @@ def predict(request: PredictRequest) -> PredictResponse:
         return _predict(request.text)
     except Exception as exc:  # pragma: no cover - runtime protection
         raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@app.post("/predict/batch", response_model=BatchPredictResponse)
+def predict_batch(request: BatchPredictRequest) -> BatchPredictResponse:
+    if len(request.texts) > BATCH_MAX_ITEMS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"`texts` can contain at most {BATCH_MAX_ITEMS} items.",
+        )
+
+    predictions: list[PredictResponse] = []
+    try:
+        for idx, text in enumerate(request.texts):
+            text_length = len(text)
+            if text_length < 5:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"`texts[{idx}]` must be at least 5 characters.",
+                )
+            if text_length > 5000:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"`texts[{idx}]` must be at most 5000 characters.",
+                )
+            predictions.append(_predict(text))
+    except HTTPException:
+        raise
+    except Exception as exc:  # pragma: no cover - runtime protection
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+    human_review_count = sum(1 for item in predictions if item.needs_human_review)
+    return BatchPredictResponse(
+        total=len(predictions),
+        auto_route_count=len(predictions) - human_review_count,
+        human_review_count=human_review_count,
+        predictions=predictions,
+    )
 
 
 def main() -> None:

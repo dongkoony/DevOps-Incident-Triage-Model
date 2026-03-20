@@ -48,10 +48,14 @@ curl -s http://127.0.0.1:8000/health
 curl -s -X POST http://127.0.0.1:8000/predict \
   -H "Content-Type: application/json" \
   -d '{"text":"..."}'
+curl -s -X POST http://127.0.0.1:8000/predict/batch \
+  -H "Content-Type: application/json" \
+  -d '{"texts":["...","..."]}'
 ```
 
 - `/health` 결과:
 - `/predict` 결과:
+- `/predict/batch` 결과:
 
 ## 7) 공개 링크
 
