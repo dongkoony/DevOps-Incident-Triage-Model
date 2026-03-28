@@ -28,6 +28,7 @@ api = [
   "fastapi>=0.111.0",
   "uvicorn[standard]>=0.30.0",
   "pydantic>=2.7.0",
+  "prometheus-client>=0.20.0",
 ]
 peft = [
   "peft>=0.11.0",

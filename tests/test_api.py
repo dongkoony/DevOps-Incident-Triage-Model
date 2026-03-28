@@ -73,3 +73,44 @@ def test_health_includes_batch_max_items() -> None:
     payload = response.json()
     assert "batch_max_items" in payload
     assert payload["batch_max_items"] >= 1
+
+
+def test_health_returns_request_id_header() -> None:
+    client = TestClient(api_module.app)
+    response = client.get("/health")
+
+    assert response.status_code == 200
+    assert response.headers.get("x-request-id")
+
+
+def test_request_id_echoes_client_header() -> None:
+    client = TestClient(api_module.app)
+    response = client.get("/health", headers={"X-Request-ID": "req-test-123"})
+
+    assert response.status_code == 200
+    assert response.headers["x-request-id"] == "req-test-123"
+
+
+def test_metrics_exposes_prediction_counters(monkeypatch) -> None:
+    monkeypatch.setattr(api_module, "_predict", _fake_predict)
+    client = TestClient(api_module.app)
+
+    predict_response = client.post(
+        "/predict",
+        json={"text": "Ambiguous release failure with timeout and missing permissions."},
+    )
+    batch_response = client.post(
+        "/predict/batch",
+        json={"texts": ["Node NotReady after upgrade.", "Ambiguous failure in mixed logs."]},
+    )
+    metrics_response = client.get("/metrics")
+
+    assert predict_response.status_code == 200
+    assert batch_response.status_code == 200
+    assert metrics_response.status_code == 200
+    assert metrics_response.headers["content-type"].startswith("text/plain")
+    metrics_payload = metrics_response.text
+    assert 'ditri_prediction_requests_total{endpoint="/predict"}' in metrics_payload
+    assert 'ditri_prediction_requests_total{endpoint="/predict/batch"}' in metrics_payload
+    assert 'ditri_triage_decisions_total{route="auto_route"}' in metrics_payload
+    assert 'ditri_triage_decisions_total{route="human_review"}' in metrics_payload

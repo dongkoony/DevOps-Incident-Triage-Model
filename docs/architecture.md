@@ -25,6 +25,8 @@
    - FastAPI `/predict`, `/predict/batch` API
    - 저신뢰 예측을 `needs_human_review`로 라우팅하는 threshold gating
    - 배치 요청은 `BATCH_MAX_ITEMS`로 상한 제어
+   - `X-Request-ID` 기반 요청 추적(응답 헤더 포함)
+   - `/metrics`를 통한 Prometheus 호환 운영 지표 노출
    - Optional Gradio app
 5. Publish
    - Hugging Face Hub 모델 리포지토리 업로드
