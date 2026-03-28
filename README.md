@@ -207,6 +207,20 @@ curl -s -X POST http://127.0.0.1:8000/predict/batch \
 - `human_review_count`: 수동 검토 필요 건수
 - `predictions`: 각 건의 상세 예측(`needs_human_review`, `recommended_queue` 포함)
 
+### Metrics & Request Trace
+
+- 모든 API 응답 헤더에 `X-Request-ID`가 포함됩니다.
+  - 클라이언트가 `X-Request-ID`를 전달하면 동일 값을 그대로 반영합니다.
+  - 미전달 시 서버가 UUID를 생성합니다.
+- Prometheus scrape용 `/metrics` 엔드포인트를 제공합니다.
+  - HTTP 요청 수/지연시간
+  - 예측 엔드포인트 호출/실패 수
+  - 자동 라우팅 vs 수동 검토 전환 건수
+
+```bash
+curl -s http://127.0.0.1:8000/metrics
+```
+
 ## 7) Optional Gradio App
 
 ```bash
