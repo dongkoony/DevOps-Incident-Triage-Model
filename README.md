@@ -207,6 +207,39 @@ curl -s -X POST http://127.0.0.1:8000/predict/batch \
 - `human_review_count`: 수동 검토 필요 건수
 - `predictions`: 각 건의 상세 예측(`needs_human_review`, `recommended_queue` 포함)
 
+### Async Batch Predict API
+
+대량 요청이나 API 타임아웃 회피가 필요한 경우 비동기 잡 기반 배치를 사용할 수 있습니다.
+
+1) 잡 생성:
+
+```bash
+curl -s -X POST http://127.0.0.1:8000/predict/batch/async \
+  -H "Content-Type: application/json" \
+  -d '{
+    "texts": [
+      "EKS worker nodes became NotReady after CNI upgrade.",
+      "Ambiguous release failure: timeout, permission denied, and flaky smoke test."
+    ]
+  }'
+```
+
+응답 핵심 필드:
+- `job_id`: 비동기 잡 식별자
+- `status`: 초기 상태(`queued`)
+- `status_url`: 상태 조회 경로
+
+2) 상태 조회:
+
+```bash
+curl -s http://127.0.0.1:8000/predict/batch/async/<job_id>
+```
+
+완료 시(`status=completed`) 아래가 포함됩니다:
+- `auto_route_count`
+- `human_review_count`
+- `predictions`
+
 ### Metrics & Request Trace
 
 - 모든 API 응답 헤더에 `X-Request-ID`가 포함됩니다.

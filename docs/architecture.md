@@ -23,6 +23,7 @@
 4. Inference & Serving
    - CLI 단건/배치 예측
    - FastAPI `/predict`, `/predict/batch` API
+   - FastAPI `/predict/batch/async` + `/predict/batch/async/{job_id}` 비동기 잡 처리
    - 저신뢰 예측을 `needs_human_review`로 라우팅하는 threshold gating
    - 배치 요청은 `BATCH_MAX_ITEMS`로 상한 제어
    - `X-Request-ID` 기반 요청 추적(응답 헤더 포함)

@@ -63,11 +63,16 @@ curl -s http://127.0.0.1:8000/health
 curl -s -X POST http://127.0.0.1:8000/predict \
   -H "Content-Type: application/json" \
   -d '{"text":"GitHub Actions deployment failed because IAM role assumption was denied."}'
+curl -s -X POST http://127.0.0.1:8000/predict/batch/async \
+  -H "Content-Type: application/json" \
+  -d '{"texts":["Node NotReady after upgrade.","Ambiguous release failure in mixed logs."]}'
 curl -s http://127.0.0.1:8000/metrics
 ```
 
 - [ ] `/health` 응답 확인
 - [ ] `/predict` 응답 스키마 확인
+- [ ] `/predict/batch/async` 202 응답 + `job_id` 확인
+- [ ] `/predict/batch/async/{job_id}` 완료 상태 확인
 - [ ] `X-Request-ID` 헤더 반환 확인
 - [ ] `/metrics` 노출 지표 확인
 - [ ] Docker build/run 검증
