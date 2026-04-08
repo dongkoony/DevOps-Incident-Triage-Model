@@ -35,6 +35,19 @@ uv run ditri-eval --model-path ... --data-dir ... --report-dir ...
 
 추가: label별 precision/recall/f1은 `reports/per_label_metrics.json` 링크
 
+## 4-1) 베이스라인 비교 요약 (선택)
+
+- 실행 명령:
+
+```bash
+uv run ditri-benchmark --data-dir data/processed --skip-existing
+```
+
+- 결과 파일:
+  - `reports/model_benchmark.json`
+  - `reports/model_benchmark.md`
+- 최종 채택 모델:
+
 ## 5) 에러 분석 메모
 
 - 오분류 패턴 1:
@@ -48,10 +61,14 @@ curl -s http://127.0.0.1:8000/health
 curl -s -X POST http://127.0.0.1:8000/predict \
   -H "Content-Type: application/json" \
   -d '{"text":"..."}'
+curl -s -X POST http://127.0.0.1:8000/predict/batch \
+  -H "Content-Type: application/json" \
+  -d '{"texts":["...","..."]}'
 ```
 
 - `/health` 결과:
 - `/predict` 결과:
+- `/predict/batch` 결과:
 
 ## 7) 공개 링크
 

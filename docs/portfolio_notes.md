@@ -16,6 +16,7 @@
    - `uv + pyproject.toml` 기반 재현 가능한 환경
    - 학습/평가/추론/API/배포 스크립트 분리
    - Docker + GitHub Actions로 실행 경로 표준화
+   - `ditri-benchmark`로 다중 베이스라인 비교 자동화
 3. 신뢰성
    - synthetic 데이터 한계를 명시
    - per-label 지표와 confusion matrix로 약점 공개
@@ -33,7 +34,7 @@
 ### 중기 (2~4주)
 - 멀티라벨 분류 실험(BCEWithLogits + threshold tuning)
 - 에러 분석 리포트 자동 생성(오분류 패턴별)
-- API에 배치 추론 엔드포인트 추가
+- API 배치 추론 엔드포인트 고도화(비동기 처리/큐 연동)
 
 ### 장기 (4주+)
 - 온라인 추론 로그 기반 드리프트 감지

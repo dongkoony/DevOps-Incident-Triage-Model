@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "devops-incident-triage-model"
-version = "0.2.0"
+version = "0.3.0"
 description = "Portfolio-grade Hugging Face project for DevOps incident triage classification."
 readme = "README.md"
 requires-python = ">=3.12,<3.13"
@@ -28,6 +28,7 @@ api = [
   "fastapi>=0.111.0",
   "uvicorn[standard]>=0.30.0",
   "pydantic>=2.7.0",
+  "prometheus-client>=0.20.0",
 ]
 peft = [
   "peft>=0.11.0",
@@ -53,6 +54,7 @@ ditri-publish = "devops_incident_triage.hf_publish:main"
 ditri-api = "devops_incident_triage.api:main"
 ditri-gradio = "devops_incident_triage.gradio_app:main"
 ditri-ingest-raw = "devops_incident_triage.ingest_raw:main"
+ditri-benchmark = "devops_incident_triage.benchmark_models:main"
 
 [tool.setuptools]
 package-dir = { "" = "src" }

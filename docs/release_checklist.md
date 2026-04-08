@@ -44,12 +44,19 @@ uv run ditri-eval \
   --model-path models/devops-incident-triage \
   --data-dir data/processed \
   --report-dir reports
+
+uv run ditri-benchmark \
+  --data-dir data/processed \
+  --models distilbert-base-uncased,sentence-transformers/all-MiniLM-L6-v2,xlm-roberta-base \
+  --skip-existing
 ```
 
 - [ ] `models/devops-incident-triage/` 생성 확인
 - [ ] `reports/evaluation_metrics.json` 확인
 - [ ] `reports/per_label_metrics.json` 확인
 - [ ] `reports/confusion_matrix.csv` 확인
+- [ ] `reports/model_benchmark.json` 확인
+- [ ] `reports/model_benchmark.md` 확인
 - [ ] synthetic 데이터 기반 결과임을 문서에 명시
 
 ## 4) API/배포 점검
@@ -63,10 +70,13 @@ curl -s http://127.0.0.1:8000/health
 curl -s -X POST http://127.0.0.1:8000/predict \
   -H "Content-Type: application/json" \
   -d '{"text":"GitHub Actions deployment failed because IAM role assumption was denied."}'
+curl -s http://127.0.0.1:8000/metrics
 ```
 
 - [ ] `/health` 응답 확인
 - [ ] `/predict` 응답 스키마 확인
+- [ ] `X-Request-ID` 헤더 반환 확인
+- [ ] `/metrics` 노출 지표 확인
 - [ ] Docker build/run 검증
 
 ## 5) 문서/포트폴리오 점검

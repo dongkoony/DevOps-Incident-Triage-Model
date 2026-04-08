@@ -127,6 +127,22 @@ uv run ditri-eval \
 - `reports/figures/confusion_matrix.png` (matplotlib/seaborn 설치 시)
 - `reports/sample_predictions.jsonl`
 
+### 모델 베이스라인 비교 (Benchmark Matrix)
+
+```bash
+uv run ditri-benchmark \
+  --data-dir data/processed \
+  --models distilbert-base-uncased,sentence-transformers/all-MiniLM-L6-v2,xlm-roberta-base \
+  --epochs 4 \
+  --skip-existing
+```
+
+생성 산출물:
+- `reports/model_benchmark.json`
+- `reports/model_benchmark.md`
+- `models/benchmarks/<model-slug>/`
+- `reports/benchmarks/<model-slug>/`
+
 ### 로컬 추론
 
 ```bash
@@ -151,7 +167,7 @@ uv run ditri-predict \
 ## 6) FastAPI Serving
 
 ```bash
-CONFIDENCE_THRESHOLD=0.6 REVIEW_QUEUE=sre_manual_triage uv run ditri-api
+CONFIDENCE_THRESHOLD=0.6 REVIEW_QUEUE=sre_manual_triage BATCH_MAX_ITEMS=32 uv run ditri-api
 ```
 
 기본 주소: `http://127.0.0.1:8000`
@@ -186,6 +202,39 @@ curl -s -X POST http://127.0.0.1:8000/predict \
     {"label": "cicd_pipeline", "score": 0.09}
   ]
 }
+```
+
+### Batch Predict API
+
+```bash
+curl -s -X POST http://127.0.0.1:8000/predict/batch \
+  -H "Content-Type: application/json" \
+  -d '{
+    "texts": [
+      "EKS worker nodes became NotReady after CNI upgrade.",
+      "Ambiguous release failure: timeout, permission denied, and flaky smoke test."
+    ]
+  }'
+```
+
+예시 응답 핵심 필드:
+- `total`: 요청 건수
+- `auto_route_count`: 자동 라우팅 건수
+- `human_review_count`: 수동 검토 필요 건수
+- `predictions`: 각 건의 상세 예측(`needs_human_review`, `recommended_queue` 포함)
+
+### Metrics & Request Trace
+
+- 모든 API 응답 헤더에 `X-Request-ID`가 포함됩니다.
+  - 클라이언트가 `X-Request-ID`를 전달하면 동일 값을 그대로 반영합니다.
+  - 미전달 시 서버가 UUID를 생성합니다.
+- Prometheus scrape용 `/metrics` 엔드포인트를 제공합니다.
+  - HTTP 요청 수/지연시간
+  - 예측 엔드포인트 호출/실패 수
+  - 자동 라우팅 vs 수동 검토 전환 건수
+
+```bash
+curl -s http://127.0.0.1:8000/metrics
 ```
 
 ## 7) Optional Gradio App
@@ -234,6 +283,7 @@ GitHub Actions (`.github/workflows/ci.yml`)에서 다음을 수행합니다.
 - 브랜치 전략: `docs/branch_strategy.md`
 - PR 템플릿: `.github/pull_request_template.md`
 - 릴리스 체크리스트: `docs/release_checklist.md`
+- 모델 비교 가이드: `docs/model_benchmarking.md`
 - 실데이터 ingestion 가이드: `docs/real_data_ingestion.md`
 
 핵심:
@@ -262,6 +312,7 @@ GitHub Actions (`.github/workflows/ci.yml`)에서 다음을 수행합니다.
 │  ├─ data_prep.py
 │  ├─ train.py
 │  ├─ evaluate.py
+│  ├─ benchmark_models.py
 │  ├─ predict.py
 │  ├─ hf_publish.py
 │  └─ api.py
@@ -272,6 +323,7 @@ GitHub Actions (`.github/workflows/ci.yml`)에서 다음을 수행합니다.
 │  ├─ portfolio_notes.md
 │  ├─ release_checklist.md
 │  ├─ portfolio_evidence.md
+│  ├─ model_benchmarking.md
 │  └─ real_data_ingestion.md
 └─ tests/
 ```

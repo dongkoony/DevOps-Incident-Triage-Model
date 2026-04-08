@@ -20,10 +20,14 @@
    - confusion matrix CSV(+PNG)
    - confidence threshold metrics(자동 분류 커버리지 vs 수동 검토 비율)
    - sample prediction dump
+   - `ditri-benchmark`로 다중 베이스라인 비교 리포트 생성
 4. Inference & Serving
    - CLI 단건/배치 예측
-   - FastAPI `/predict` API
+   - FastAPI `/predict`, `/predict/batch` API
    - 저신뢰 예측을 `needs_human_review`로 라우팅하는 threshold gating
+   - 배치 요청은 `BATCH_MAX_ITEMS`로 상한 제어
+   - `X-Request-ID` 기반 요청 추적(응답 헤더 포함)
+   - `/metrics`를 통한 Prometheus 호환 운영 지표 노출
    - Optional Gradio app
 5. Publish
    - Hugging Face Hub 모델 리포지토리 업로드
@@ -43,3 +47,5 @@
 - `reports/per_label_metrics.json`
 - `reports/confusion_matrix.csv`
 - `reports/sample_predictions.jsonl`
+- `reports/model_benchmark.json`
+- `reports/model_benchmark.md`
