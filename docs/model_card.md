@@ -1,72 +1,174 @@
-# Model Card: DevOps-Incident-Triage-Model
+---
+license: mit
+language:
+- en
+library_name: transformers
+pipeline_tag: text-classification
+tags:
+- devops
+- sre
+- incident-triage
+- text-classification
+- mlops
+- fastapi
+- transformers
+- python
+base_model: distilbert-base-uncased
+---
 
-## Model Details
+# devops-incident-triage
 
-- Model name: `DevOps-Incident-Triage-Model`
-- Base checkpoint: `distilbert-base-uncased` (baseline)
-- Task: DevOps incident text classification (multiclass)
-- Labels:
-  - `k8s_cluster`
-  - `cicd_pipeline`
-  - `aws_iam_network`
-  - `deployment_release`
-  - `container_runtime`
-  - `observability_alerting`
-  - `database_state`
+`devops-incident-triage` is a multiclass text classification model for routing DevOps incident summaries and error messages to the most likely operational domain.
+
+In short: give it an incident sentence such as a deployment failure, Kubernetes cluster issue, IAM/network error, or database state problem, and it predicts which team/domain should review it first.
+
+## Model Summary
+
+- Task: DevOps incident text classification
+- Problem type: multiclass classification
+- Base model: `distilbert-base-uncased`
+- Project release: `v0.3.0`
+- Intended role: first-pass triage support, not autonomous decision-making
+
+## Labels
+
+| Label | Meaning |
+|---|---|
+| `k8s_cluster` | Kubernetes scheduling, node, or cluster-state issues |
+| `cicd_pipeline` | CI/CD build, test, or deployment pipeline failures |
+| `aws_iam_network` | AWS IAM, VPC, network, or permission-related issues |
+| `deployment_release` | Helm, rollout, release, or deployment operation issues |
+| `container_runtime` | Docker, containerd, image, or container runtime issues |
+| `observability_alerting` | Monitoring, logging, tracing, or alerting issues |
+| `database_state` | Database connectivity, replication, lock, or storage-state issues |
 
 ## Intended Use
 
-이 모델은 DevOps/Platform/SRE 환경에서 인시던트 텍스트를 빠르게 분류하여
-초동 대응 라우팅을 보조하기 위한 용도입니다.
+This model is designed for:
 
-- 권장: 온콜 triage 보조, 티켓 자동 태깅 보조
-- 비권장: 완전 자동 의사결정, 인적 검토 없는 조치 실행
-- 운영 권장: confidence threshold gating을 통해 저신뢰 예측은 `needs_human_review`로 보냄
-- 운영 권장: FastAPI `/predict/batch` 사용 시 배치 상한(`BATCH_MAX_ITEMS`)을 둬 API 안정성 확보
+- incident triage assistance in DevOps, Platform, and SRE workflows
+- ticket auto-tagging support
+- queue recommendation support before a human reviews the issue
+
+This model is not designed for:
+
+- fully autonomous production actions
+- incident severity decisions without human review
+- root-cause analysis by itself
+
+## Important Scope Note
+
+The published model performs classification only.
+
+Operational behaviors such as:
+
+- confidence threshold gating
+- `needs_human_review` fallback
+- synchronous batch inference
+- asynchronous batch jobs
+- API observability and metrics
+
+are implemented in the service layer of the project, not inside the model weights themselves.
+
+Project repository:
+
+- GitHub: `dongkoony/DevOps-Incident-Triage-Model`
 
 ## Training Data
 
-현재 버전은 `data/sample/incidents_synthetic.csv` 기반의 synthetic starter 데이터로 학습됩니다.
+This version was trained on a synthetic starter dataset derived from DevOps-style incident examples.
 
-- 이 데이터는 실서비스에서 직접 수집된 로그/티켓이 아닙니다.
-- 실제 일반화 성능은 운영 데이터로 재학습/재평가해야 검증됩니다.
+- Source file in project: `data/sample/incidents_synthetic.csv`
+- The dataset is not collected from a real production environment.
+- The reported behavior should be interpreted as portfolio and pipeline evidence, not as validated real-world generalization.
+
+If this model is to be used beyond demonstration or experimentation, it should be retrained and reevaluated on anonymized real incident data.
 
 ## Training Procedure
 
-- Data split: train/validation/test
-- Input max length: 256
-- Metrics: accuracy, macro F1, per-label precision/recall/F1
-- Optional: PEFT LoRA (`--use-peft`)
+- Data split: train / validation / test
+- Max input length: 256
+- Baseline checkpoint: `distilbert-base-uncased`
+- Evaluation metrics: accuracy, macro F1, weighted F1, per-label precision/recall/F1
 
-## Evaluation
+The project also includes a benchmark workflow to compare multiple backbones under the same setup:
 
-평가 스크립트:
+- `distilbert-base-uncased`
+- `sentence-transformers/all-MiniLM-L6-v2`
+- `xlm-roberta-base`
 
-```bash
-uv run ditri-eval --model-path models/devops-incident-triage --data-dir data/processed --report-dir reports
+## How To Use
+
+### Transformers pipeline
+
+```python
+from transformers import pipeline
+
+classifier = pipeline(
+    "text-classification",
+    model="dongkoony/devops-incident-triage",
+    tokenizer="dongkoony/devops-incident-triage",
+)
+
+result = classifier(
+    "GitHub Actions deployment failed because IAM role assumption was denied."
+)
+print(result)
 ```
 
-산출물:
-- `reports/evaluation_metrics.json`
-- `reports/per_label_metrics.json`
-- `reports/confusion_matrix.csv`
-- `reports/sample_predictions.jsonl`
+### With `AutoTokenizer` and `AutoModelForSequenceClassification`
+
+```python
+import torch
+from transformers import AutoModelForSequenceClassification, AutoTokenizer
+
+model_id = "dongkoony/devops-incident-triage"
+tokenizer = AutoTokenizer.from_pretrained(model_id)
+model = AutoModelForSequenceClassification.from_pretrained(model_id)
+
+text = "EKS worker nodes became NotReady after CNI upgrade."
+inputs = tokenizer(text, return_tensors="pt", truncation=True, max_length=256)
+
+with torch.no_grad():
+    logits = model(**inputs).logits
+
+predicted_id = int(logits.argmax(dim=-1))
+print(model.config.id2label[predicted_id])
+```
+
+## Evaluation Artifacts
+
+The project evaluation pipeline produces:
+
+- `evaluation_metrics.json`
+- `per_label_metrics.json`
+- `threshold_metrics.json`
+- `confusion_matrix.csv`
+- `sample_predictions.jsonl`
+
+These artifacts are generated in the project repository and are intended to make the evaluation process reproducible and inspectable.
 
 ## Limitations
 
-- Synthetic 데이터 중심이라 도메인 편향/표현 다양성이 제한적입니다.
-- 라벨 정의가 단일 주 라벨(multiclass)이라 복합 원인 인시던트 반영이 약합니다.
-- 장문 로그/대량 컨텍스트(멀티라인 스택트레이스) 처리 성능은 추가 검증이 필요합니다.
+- trained on synthetic incident text rather than real anonymized production tickets/logs
+- single-label formulation, while real incidents may have multiple contributing domains
+- long, noisy, or multi-line logs may require additional preprocessing
+- classification confidence should not be treated as an operational decision guarantee
 
 ## Ethical and Operational Considerations
 
-- 모델 예측은 우선순위 판단 보조이며, 최종 판단은 운영자에게 있습니다.
-- 오분류 시 잘못된 라우팅과 대응 지연이 발생할 수 있어 human-in-the-loop가 필요합니다.
-- 운영 로그에 민감정보가 포함될 수 있으므로 데이터 비식별화가 선행되어야 합니다.
+- keep a human in the loop for low-confidence or high-impact decisions
+- do not use the model as the sole authority for remediation actions
+- ensure sensitive log data is anonymized before retraining or evaluation
+- review failure cases regularly to avoid silently reinforcing routing bias
 
-## Recommended Next Improvements
+## Recommended Next Steps
 
-1. 실제 비식별화 인시던트 데이터셋 구축
-2. 멀티라벨/계층형 분류 실험
-3. 라벨링 가이드 및 품질 지표(IAA) 도입
-4. 오프라인 + 온라인 모니터링(데이터/모델 드리프트) 연계
+1. Retrain on anonymized real incident data.
+2. Add multilabel classification experiments.
+3. Improve labeling guidelines and label quality review.
+4. Connect offline evaluation with online drift monitoring.
+
+## Citation
+
+If you reference the project, please cite the GitHub repository and the released model version together so the implementation context and operational assumptions remain clear.
