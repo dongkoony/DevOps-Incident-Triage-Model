@@ -16,6 +16,7 @@
    - `uv + pyproject.toml` 기반 재현 가능한 환경
    - 학습/평가/추론/API/배포 스크립트 분리
    - Docker + GitHub Actions로 실행 경로 표준화
+   - `ditri-benchmark`로 다중 베이스라인 비교 자동화
 3. 신뢰성
    - synthetic 데이터 한계를 명시
    - per-label 지표와 confusion matrix로 약점 공개

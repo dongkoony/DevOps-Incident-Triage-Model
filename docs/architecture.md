@@ -20,6 +20,7 @@
    - confusion matrix CSV(+PNG)
    - confidence threshold metrics(자동 분류 커버리지 vs 수동 검토 비율)
    - sample prediction dump
+   - `ditri-benchmark`로 다중 베이스라인 비교 리포트 생성
 4. Inference & Serving
    - CLI 단건/배치 예측
    - FastAPI `/predict`, `/predict/batch` API
@@ -46,3 +47,5 @@
 - `reports/per_label_metrics.json`
 - `reports/confusion_matrix.csv`
 - `reports/sample_predictions.jsonl`
+- `reports/model_benchmark.json`
+- `reports/model_benchmark.md`

@@ -44,12 +44,19 @@ uv run ditri-eval \
   --model-path models/devops-incident-triage \
   --data-dir data/processed \
   --report-dir reports
+
+uv run ditri-benchmark \
+  --data-dir data/processed \
+  --models distilbert-base-uncased,sentence-transformers/all-MiniLM-L6-v2,xlm-roberta-base \
+  --skip-existing
 ```
 
 - [ ] `models/devops-incident-triage/` 생성 확인
 - [ ] `reports/evaluation_metrics.json` 확인
 - [ ] `reports/per_label_metrics.json` 확인
 - [ ] `reports/confusion_matrix.csv` 확인
+- [ ] `reports/model_benchmark.json` 확인
+- [ ] `reports/model_benchmark.md` 확인
 - [ ] synthetic 데이터 기반 결과임을 문서에 명시
 
 ## 4) API/배포 점검

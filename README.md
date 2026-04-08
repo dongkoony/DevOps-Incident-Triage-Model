@@ -127,6 +127,22 @@ uv run ditri-eval \
 - `reports/figures/confusion_matrix.png` (matplotlib/seaborn 설치 시)
 - `reports/sample_predictions.jsonl`
 
+### 모델 베이스라인 비교 (Benchmark Matrix)
+
+```bash
+uv run ditri-benchmark \
+  --data-dir data/processed \
+  --models distilbert-base-uncased,sentence-transformers/all-MiniLM-L6-v2,xlm-roberta-base \
+  --epochs 4 \
+  --skip-existing
+```
+
+생성 산출물:
+- `reports/model_benchmark.json`
+- `reports/model_benchmark.md`
+- `models/benchmarks/<model-slug>/`
+- `reports/benchmarks/<model-slug>/`
+
 ### 로컬 추론
 
 ```bash
@@ -267,6 +283,7 @@ GitHub Actions (`.github/workflows/ci.yml`)에서 다음을 수행합니다.
 - 브랜치 전략: `docs/branch_strategy.md`
 - PR 템플릿: `.github/pull_request_template.md`
 - 릴리스 체크리스트: `docs/release_checklist.md`
+- 모델 비교 가이드: `docs/model_benchmarking.md`
 - 실데이터 ingestion 가이드: `docs/real_data_ingestion.md`
 
 핵심:
@@ -295,6 +312,7 @@ GitHub Actions (`.github/workflows/ci.yml`)에서 다음을 수행합니다.
 │  ├─ data_prep.py
 │  ├─ train.py
 │  ├─ evaluate.py
+│  ├─ benchmark_models.py
 │  ├─ predict.py
 │  ├─ hf_publish.py
 │  └─ api.py
@@ -305,6 +323,7 @@ GitHub Actions (`.github/workflows/ci.yml`)에서 다음을 수행합니다.
 │  ├─ portfolio_notes.md
 │  ├─ release_checklist.md
 │  ├─ portfolio_evidence.md
+│  ├─ model_benchmarking.md
 │  └─ real_data_ingestion.md
 └─ tests/
 ```
