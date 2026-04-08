@@ -1,133 +1,72 @@
-# DevOps-Incident-Triage-Model
+[![CI](https://github.com/dongkoony/DevOps-Incident-Triage-Model/actions/workflows/ci.yml/badge.svg)](https://github.com/dongkoony/DevOps-Incident-Triage-Model/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/dongkoony/DevOps-Incident-Triage-Model)](https://github.com/dongkoony/DevOps-Incident-Triage-Model/releases)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](#license)
 
-실무형 DevOps/MLOps 포트폴리오를 위한 Hugging Face NLP 프로젝트입니다.  
-운영 인시던트 텍스트(에러 로그, 장애 요약, 파이프라인 실패 메시지)를 입력받아 **초동 트리아지 카테고리**를 분류합니다.
+# DevOps Incident Triage Model
 
-이 저장소는 "화려한 데모"보다 아래를 우선합니다.
+English | [한국어](README.ko.md)
 
-- 재현 가능한 학습/평가 파이프라인
-- 로컬 추론 및 API 서빙
-- Docker/CI/Hugging Face 배포 경로
-- 데이터 현실성에 대한 정직한 문서화
+Portfolio-grade NLP and MLOps project for classifying DevOps incident text into the most relevant operational domain for first-pass routing.
 
-## 1) Problem & Scope
+This repository focuses on production-minded engineering rather than demo-only modeling:
 
-### 목표
-운영 인시던트 문장을 아래 도메인으로 분류해, 온콜/플랫폼/서비스팀의 초동 대응 라우팅을 돕습니다.
+- reproducible training and evaluation pipelines
+- local inference, FastAPI serving, and async batch jobs
+- observability with request tracing and Prometheus-style metrics
+- Docker, CI, release workflow, and Hugging Face publishing
+- explicit documentation of data limitations and operational scope
 
-### 라벨 셋 (v1)
+## Overview
 
-| Label | 설명 |
+The model takes incident summaries, deployment failures, and log-style operational messages and predicts which domain should review the issue first.
+
+Current label set:
+
+| Label | Description |
 |---|---|
-| `k8s_cluster` | Kubernetes 스케줄링/노드/클러스터 상태 이슈 |
-| `cicd_pipeline` | CI/CD 파이프라인 빌드/테스트/배포 흐름 실패 |
-| `aws_iam_network` | AWS IAM/VPC/네트워크/권한 문제 |
-| `deployment_release` | Helm/롤아웃/릴리즈 운영 이슈 |
-| `container_runtime` | Docker/containerd 런타임/이미지/리소스 문제 |
-| `observability_alerting` | 모니터링/로그/트레이싱/알림 품질 이슈 |
-| `database_state` | DB 연결/복제/락/스토리지 상태 이슈 |
+| `k8s_cluster` | Kubernetes scheduling, node, or cluster-state issues |
+| `cicd_pipeline` | CI/CD build, test, or deployment pipeline failures |
+| `aws_iam_network` | AWS IAM, VPC, network, or permission-related issues |
+| `deployment_release` | Helm, rollout, or release operation issues |
+| `container_runtime` | Docker, containerd, image, or runtime issues |
+| `observability_alerting` | Monitoring, logging, tracing, or alerting issues |
+| `database_state` | Database connectivity, replication, lock, or storage-state issues |
 
-## 2) 왜 Multiclass 먼저 시작했는가
+## Repository Scope
 
-실제 인시던트는 복합 원인을 가질 수 있어 멀티라벨이 이상적일 때가 많습니다.  
-하지만 포트폴리오 v1에서는 **단일 주 담당 도메인 분류(multiclass)**가 더 현실적입니다.
+This repository includes more than a trained classifier.
 
-- 라벨링 비용이 낮고 합의가 쉬움
-- 베이스라인 평가가 명확함(accuracy, macro F1, confusion matrix)
-- API/운영 라우팅에 바로 연결하기 쉬움
+- Model training with `transformers`
+- Evaluation with confusion matrix and threshold-based review analysis
+- CLI inference for single and batch inputs
+- FastAPI endpoints for real-time and batch inference
+- Async batch job API for queue-like inference workflows
+- Benchmark automation across multiple backbone models
+- Release and documentation flow suitable for a portfolio-grade MLOps project
 
-멀티라벨 확장은 `docs/portfolio_notes.md`에 후속 단계로 정리했습니다.
+## Data Honesty
 
-## 3) 모델 선택과 다국어 전략
+The starter dataset in `data/sample/incidents_synthetic.csv` is synthetic.
 
-기본 체크포인트는 `distilbert-base-uncased`입니다.
+- It is not collected from a real production environment.
+- Reported scores should not be interpreted as validated real-world generalization.
+- Real anonymized incident data is required before any serious operational use.
 
-- DevOps 로그/오류 텍스트는 실제로 영문 비중이 높아 English-first 베이스라인이 효율적
-- 개인 환경에서 학습/실험 비용이 낮고 반복 실험이 빠름
-- 추후 다국어 요구가 있으면 `xlm-roberta-base`로 교체해 동일 파이프라인 재사용 가능
+That limitation is a deliberate part of the project documentation and not hidden in the evaluation results.
 
-## 4) Data Honesty
+## Model And Experimentation
 
-`data/sample/incidents_synthetic.csv`는 **합성(synthetic) 스타터 데이터**입니다.
+Baseline model:
 
-- 실제 운영 데이터가 아닙니다.
-- 이 데이터 기반 점수는 "실서비스 일반화 성능"을 의미하지 않습니다.
-- 실데이터(비식별화된 티켓/로그)로 교체해 재학습하는 것이 핵심입니다.
+- `distilbert-base-uncased`
 
-## 5) Quickstart (uv + Python 3.12)
+Why this baseline:
 
-```bash
-uv python install 3.12
-uv sync --extra dev --extra api --extra viz --extra peft --extra gradio
-```
+- DevOps logs and error messages are often English-dominant
+- training and iteration cost remain practical on a personal environment
+- the same pipeline can be reused for multilingual backbones such as `xlm-roberta-base`
 
-### 데이터 준비
-
-실데이터(비식별화 CSV)가 있다면 먼저 ingestion을 수행하세요.
-
-```bash
-uv run ditri-ingest-raw \
-  --input-path data/raw/incidents_template.csv \
-  --output-canonical-path data/raw/incidents_canonical.csv \
-  --output-training-path data/raw/incidents_training_ready.csv \
-  --report-path reports/raw_ingestion_report.json
-```
-
-그 다음 아래처럼 split 생성:
-
-```bash
-uv run ditri-data-prep --input-path data/raw/incidents_training_ready.csv --output-dir data/processed --seed 42
-```
-
-synthetic 스타터를 쓸 경우:
-
-```bash
-# 샘플 CSV를 train/validation/test JSONL로 분할
-uv run ditri-data-prep --input-path data/sample/incidents_synthetic.csv --output-dir data/processed --seed 42
-
-# 또는 synthetic 데이터를 새로 생성하면서 준비
-uv run ditri-data-prep --generate-synthetic --samples-per-label 60 --input-path data/sample/incidents_synthetic.csv --output-dir data/processed
-```
-
-### 학습
-
-```bash
-uv run ditri-train \
-  --data-dir data/processed \
-  --output-dir models/devops-incident-triage \
-  --model-name distilbert-base-uncased \
-  --epochs 4
-```
-
-선택: PEFT(LoRA)
-
-```bash
-uv run ditri-train \
-  --data-dir data/processed \
-  --output-dir models/devops-incident-triage \
-  --model-name distilbert-base-uncased \
-  --use-peft
-```
-
-### 평가
-
-```bash
-uv run ditri-eval \
-  --model-path models/devops-incident-triage \
-  --data-dir data/processed \
-  --report-dir reports \
-  --confidence-thresholds 0.4,0.5,0.6,0.7
-```
-
-생성 산출물:
-- `reports/evaluation_metrics.json`
-- `reports/per_label_metrics.json`
-- `reports/threshold_metrics.json` (자동 분류 커버리지/인간 검토 비율/임계값별 성능)
-- `reports/confusion_matrix.csv`
-- `reports/figures/confusion_matrix.png` (matplotlib/seaborn 설치 시)
-- `reports/sample_predictions.jsonl`
-
-### 모델 베이스라인 비교 (Benchmark Matrix)
+Benchmark workflow:
 
 ```bash
 uv run ditri-benchmark \
@@ -137,13 +76,92 @@ uv run ditri-benchmark \
   --skip-existing
 ```
 
-생성 산출물:
+Generated outputs:
+
 - `reports/model_benchmark.json`
 - `reports/model_benchmark.md`
 - `models/benchmarks/<model-slug>/`
 - `reports/benchmarks/<model-slug>/`
 
-### 로컬 추론
+## Quickstart
+
+### 1. Environment
+
+```bash
+uv python install 3.12
+uv sync --extra dev --extra api --extra viz --extra peft --extra gradio
+```
+
+### 2. Data Preparation
+
+Using the synthetic starter dataset:
+
+```bash
+uv run ditri-data-prep \
+  --input-path data/sample/incidents_synthetic.csv \
+  --output-dir data/processed \
+  --seed 42
+```
+
+Using anonymized real data:
+
+```bash
+uv run ditri-ingest-raw \
+  --input-path data/raw/incidents_template.csv \
+  --output-canonical-path data/raw/incidents_canonical.csv \
+  --output-training-path data/raw/incidents_training_ready.csv \
+  --report-path reports/raw_ingestion_report.json
+
+uv run ditri-data-prep \
+  --input-path data/raw/incidents_training_ready.csv \
+  --output-dir data/processed \
+  --seed 42
+```
+
+### 3. Training
+
+```bash
+uv run ditri-train \
+  --data-dir data/processed \
+  --output-dir models/devops-incident-triage \
+  --model-name distilbert-base-uncased \
+  --epochs 4
+```
+
+Optional PEFT:
+
+```bash
+uv run ditri-train \
+  --data-dir data/processed \
+  --output-dir models/devops-incident-triage \
+  --model-name distilbert-base-uncased \
+  --use-peft
+```
+
+### 4. Evaluation
+
+```bash
+uv run ditri-eval \
+  --model-path models/devops-incident-triage \
+  --data-dir data/processed \
+  --report-dir reports \
+  --confidence-thresholds 0.4,0.5,0.6,0.7
+```
+
+Key artifacts:
+
+- `reports/evaluation_metrics.json`
+- `reports/per_label_metrics.json`
+- `reports/threshold_metrics.json`
+- `reports/confusion_matrix.csv`
+- `reports/figures/confusion_matrix.png`
+- `reports/sample_predictions.jsonl`
+
+## Inference And Serving
+
+### CLI Prediction
+
+Single input:
 
 ```bash
 uv run ditri-predict \
@@ -153,198 +171,102 @@ uv run ditri-predict \
   --text "EKS worker nodes became NotReady after CNI upgrade."
 ```
 
-배치 입력(.csv/.jsonl/.txt):
+Batch input:
 
 ```bash
 uv run ditri-predict \
   --model-path models/devops-incident-triage \
-  --confidence-threshold 0.6 \
   --input-file data/sample/incidents_synthetic.csv \
   --text-column text \
   --output-file reports/batch_predictions.jsonl
 ```
 
-## 6) FastAPI Serving
+### FastAPI
 
 ```bash
 CONFIDENCE_THRESHOLD=0.6 REVIEW_QUEUE=sre_manual_triage BATCH_MAX_ITEMS=32 uv run ditri-api
 ```
 
-기본 주소: `http://127.0.0.1:8000`
+Available endpoints:
 
-### Health check
+- `GET /health`
+- `POST /predict`
+- `POST /predict/batch`
+- `POST /predict/batch/async`
+- `GET /predict/batch/async/{job_id}`
+- `GET /metrics`
 
-```bash
-curl -s http://127.0.0.1:8000/health
-```
+Operational features:
 
-### Predict API
+- `X-Request-ID` response header for traceability
+- confidence threshold based human review routing
+- async batch job flow for queue-like consumption
+- Prometheus-compatible metrics exposure
 
-```bash
-curl -s -X POST http://127.0.0.1:8000/predict \
-  -H "Content-Type: application/json" \
-  -d '{"text":"GitHub Actions deployment failed because IAM role assumption was denied."}'
-```
+## Delivery And Release
 
-예시 응답:
+This repository follows a lightweight GitFlow-style process:
 
-```json
-{
-  "label": "aws_iam_network",
-  "predicted_label": "aws_iam_network",
-  "final_label": "aws_iam_network",
-  "needs_human_review": false,
-  "recommended_queue": "aws_iam_network",
-  "confidence": 0.84,
-  "confidence_threshold": 0.6,
-  "scores": [
-    {"label": "aws_iam_network", "score": 0.84},
-    {"label": "cicd_pipeline", "score": 0.09}
-  ]
-}
-```
+- `main`: release-ready branch
+- `develop`: integration branch
+- `feature/*`: scoped feature work
+- `release/*`: release stabilization
 
-### Batch Predict API
+Current project release:
 
-```bash
-curl -s -X POST http://127.0.0.1:8000/predict/batch \
-  -H "Content-Type: application/json" \
-  -d '{
-    "texts": [
-      "EKS worker nodes became NotReady after CNI upgrade.",
-      "Ambiguous release failure: timeout, permission denied, and flaky smoke test."
-    ]
-  }'
-```
+- `v0.3.0`
 
-예시 응답 핵심 필드:
-- `total`: 요청 건수
-- `auto_route_count`: 자동 라우팅 건수
-- `human_review_count`: 수동 검토 필요 건수
-- `predictions`: 각 건의 상세 예측(`needs_human_review`, `recommended_queue` 포함)
+Related operational documentation:
 
-### Metrics & Request Trace
+- [Branch strategy](docs/branch_strategy.md)
+- [Release checklist](docs/release_checklist.md)
+- [Architecture](docs/architecture.md)
+- [Model benchmarking guide](docs/model_benchmarking.md)
+- [Portfolio notes](docs/portfolio_notes.md)
 
-- 모든 API 응답 헤더에 `X-Request-ID`가 포함됩니다.
-  - 클라이언트가 `X-Request-ID`를 전달하면 동일 값을 그대로 반영합니다.
-  - 미전달 시 서버가 UUID를 생성합니다.
-- Prometheus scrape용 `/metrics` 엔드포인트를 제공합니다.
-  - HTTP 요청 수/지연시간
-  - 예측 엔드포인트 호출/실패 수
-  - 자동 라우팅 vs 수동 검토 전환 건수
-
-```bash
-curl -s http://127.0.0.1:8000/metrics
-```
-
-## 7) Optional Gradio App
-
-```bash
-uv run ditri-gradio
-```
-
-## 8) Docker
-
-```bash
-docker build -t devops-incident-triage:latest .
-docker run --rm -p 8000:8000 \
-  -e MODEL_PATH=/app/models/devops-incident-triage \
-  devops-incident-triage:latest
-```
-
-## 9) Hugging Face Publish
-
-사전 준비:
+## Hugging Face Publishing
 
 ```bash
 export HF_TOKEN="hf_xxx"
-```
 
-업로드:
-
-```bash
 uv run ditri-publish \
   --model-dir models/devops-incident-triage \
-  --repo-id <your-hf-username>/DevOps-Incident-Triage-Model
+  --repo-id <your-hf-username>/devops-incident-triage
 ```
 
-`docs/model_card.md`가 모델 아티팩트에 `README.md`로 포함됩니다(모델 폴더에 README가 없을 때).
+The publish flow copies `docs/model_card.md` into the model artifact directory as `README.md` when needed.
 
-## 10) CI
-
-GitHub Actions (`.github/workflows/ci.yml`)에서 다음을 수행합니다.
-
-- `ruff` 린트
-- `pytest`
-- 데이터 준비 스모크 테스트
-
-## 11) Git Branch & PR Workflow
-
-- 브랜치 전략: `docs/branch_strategy.md`
-- PR 템플릿: `.github/pull_request_template.md`
-- 릴리스 체크리스트: `docs/release_checklist.md`
-- 모델 비교 가이드: `docs/model_benchmarking.md`
-- 실데이터 ingestion 가이드: `docs/real_data_ingestion.md`
-
-핵심:
-- `main`: 릴리스 기준
-- `develop`: 통합 개발
-- `feature/*`, `release/*`, `hotfix/*` 운영
-
-## 12) Repository Layout
+## Repository Layout
 
 ```text
 .
-├─ pyproject.toml
-├─ README.md
-├─ Makefile
-├─ Dockerfile
-├─ .github/workflows/ci.yml
-├─ data/
-│  ├─ raw/
-│  ├─ processed/
-│  └─ sample/
 ├─ src/devops_incident_triage/
-│  ├─ config.py
-│  ├─ labels.py
-│  ├─ triage_policy.py
-│  ├─ ingest_raw.py
 │  ├─ data_prep.py
 │  ├─ train.py
 │  ├─ evaluate.py
 │  ├─ benchmark_models.py
 │  ├─ predict.py
+│  ├─ api.py
 │  ├─ hf_publish.py
-│  └─ api.py
-├─ app/gradio_app.py
+│  └─ ingest_raw.py
+├─ tests/
+├─ data/
+├─ reports/
+├─ models/
 ├─ docs/
-│  ├─ model_card.md
-│  ├─ architecture.md
-│  ├─ portfolio_notes.md
-│  ├─ release_checklist.md
-│  ├─ portfolio_evidence.md
-│  ├─ model_benchmarking.md
-│  └─ real_data_ingestion.md
-└─ tests/
+├─ .github/workflows/
+├─ Dockerfile
+├─ Makefile
+└─ pyproject.toml
 ```
 
-## 13) Limitations
+## Limitations
 
-- 기본 샘플은 synthetic 데이터라 성능 해석에 제한이 큼
-- 텍스트 길이/도메인 편향/라벨 불균형 대응이 아직 단순함
-- 멀티라벨 및 계층형 분류는 후속 버전 범위
+- training data is synthetic in the current public baseline
+- the task is single-label even though real incidents may span multiple domains
+- long multi-line logs and highly noisy contexts need additional validation
+- the model is intended for triage support, not autonomous remediation
 
-## 14) Next Steps (Portfolio 강화)
+## License
 
-1. 비식별화된 실제 티켓/장애 리포트 데이터셋으로 교체
-2. 라벨 가이드라인과 라벨 품질 점검(IAA) 도입
-3. 멀티라벨 실험과 threshold 튜닝 추가
-4. Drift/성능 저하 모니터링 대시보드 연동
-5. HF Space와 API 배포 자동화(CI/CD) 연결
-
-## 15) 운영형 릴리스 루틴 (권장)
-
-1. `feature/* -> develop` PR로 기능 단위 통합
-2. `release/vX.Y.Z` 생성 후 `docs/release_checklist.md` 기준 검증
-3. `release/vX.Y.Z -> main` PR 머지 + 태그 생성
-4. 실행 증거/지표를 `docs/portfolio_evidence.md`에 기록
+MIT
