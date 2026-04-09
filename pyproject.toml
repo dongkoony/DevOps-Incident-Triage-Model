@@ -55,6 +55,7 @@ ditri-api = "devops_incident_triage.api:main"
 ditri-gradio = "devops_incident_triage.gradio_app:main"
 ditri-ingest-raw = "devops_incident_triage.ingest_raw:main"
 ditri-benchmark = "devops_incident_triage.benchmark_models:main"
+ditri-demo-showcase = "devops_incident_triage.demo_showcase:main"
 
 [tool.setuptools]
 package-dir = { "" = "src" }

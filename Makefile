@@ -3,7 +3,7 @@ MODEL_DIR=models/devops-incident-triage
 DATA_INPUT=data/sample/incidents_synthetic.csv
 RAW_INPUT=data/raw/incidents_template.csv
 
-.PHONY: help install ingest-raw prep-data train eval benchmark predict api gradio docker-build docker-run test lint
+.PHONY: help install ingest-raw prep-data train eval benchmark predict demo-showcase api gradio docker-build docker-run test lint
 
 help:
 	@echo "Targets:"
@@ -14,6 +14,7 @@ help:
 	@echo "  eval         Evaluate trained model"
 	@echo "  benchmark    Run multi-model benchmark matrix"
 	@echo "  predict      Run a sample local prediction"
+	@echo "  demo-showcase Run curated demo showcase and generate reports"
 	@echo "  api          Start FastAPI server"
 	@echo "  gradio       Start Gradio demo app"
 	@echo "  lint         Run ruff"
@@ -42,6 +43,9 @@ benchmark:
 
 predict:
 	uv run ditri-predict --model-path $(MODEL_DIR) --text "EKS nodes became NotReady after CNI upgrade and deployments are pending."
+
+demo-showcase:
+	uv run ditri-demo-showcase --model-path $(MODEL_DIR)
 
 api:
 	uv run ditri-api

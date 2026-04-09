@@ -181,6 +181,24 @@ uv run ditri-predict \
   --output-file reports/batch_predictions.jsonl
 ```
 
+### Demo Showcase Report
+
+For live demos and portfolio sharing, generate a curated showcase report from representative incident examples:
+
+```bash
+uv run ditri-demo-showcase \
+  --model-path models/devops-incident-triage \
+  --confidence-threshold 0.6 \
+  --review-queue sre_manual_triage
+```
+
+Generated artifacts:
+
+- `reports/demo_showcase.json`
+- `reports/demo_showcase.md`
+
+This workflow is useful when preparing terminal demos, README evidence, or GIF/video walkthroughs because the terminal summary and saved report come from the same curated examples.
+
 ### FastAPI
 
 ```bash
