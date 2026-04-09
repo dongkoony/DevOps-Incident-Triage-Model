@@ -1,8 +1,19 @@
 from __future__ import annotations
 
+import argparse
 import json
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+
+from transformers import AutoModelForSequenceClassification, AutoTokenizer
+
+from devops_incident_triage.predict import predict_batch
+
+DEFAULT_MODEL_PATH = Path("models/devops-incident-triage")
+DEFAULT_INPUT_FILE = Path("data/demo/incidents_showcase.jsonl")
+DEFAULT_OUTPUT_JSON = Path("reports/demo_showcase.json")
+DEFAULT_OUTPUT_MARKDOWN = Path("reports/demo_showcase.md")
 
 
 def load_showcase_rows(input_file: Path) -> list[dict[str, str]]:
@@ -153,3 +164,91 @@ def write_json(payload: dict[str, Any], output_file: Path) -> None:
 def write_markdown(markdown: str, output_file: Path) -> None:
     output_file.parent.mkdir(parents=True, exist_ok=True)
     output_file.write_text(markdown, encoding="utf-8")
+
+
+def load_model_bundle(
+    model_path: Path,
+) -> tuple[AutoModelForSequenceClassification, AutoTokenizer]:
+    model = AutoModelForSequenceClassification.from_pretrained(str(model_path))
+    tokenizer = AutoTokenizer.from_pretrained(str(model_path))
+    return model, tokenizer
+
+
+def run_showcase(
+    model_path: Path,
+    input_file: Path,
+    confidence_threshold: float,
+    review_queue: str,
+    output_json: Path,
+    output_markdown: Path,
+    max_length: int,
+) -> str:
+    rows = load_showcase_rows(input_file)
+    model, tokenizer = load_model_bundle(model_path)
+    predictions = predict_batch(
+        [row["text"] for row in rows],
+        model=model,
+        tokenizer=tokenizer,
+        max_length=max_length,
+        confidence_threshold=confidence_threshold,
+        review_queue=review_queue,
+    )
+    merged = merge_rows_with_predictions(rows, predictions)
+    generated_at = datetime.now(timezone.utc).isoformat()
+    payload = build_report_payload(
+        predictions=merged,
+        model_path=str(model_path),
+        confidence_threshold=confidence_threshold,
+        review_queue=review_queue,
+        generated_at=generated_at,
+    )
+    markdown = build_markdown_report(
+        predictions=merged,
+        summary=payload["summary"],
+        generated_at=generated_at,
+        model_path=str(model_path),
+        confidence_threshold=confidence_threshold,
+    )
+    terminal_output = build_terminal_summary(
+        predictions=merged,
+        summary=payload["summary"],
+        model_path=str(model_path),
+    )
+    write_json(payload, output_json)
+    write_markdown(markdown, output_markdown)
+    return terminal_output
+
+
+def build_arg_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        description="Generate a curated demo showcase for DevOps incident triage."
+    )
+    parser.add_argument("--model-path", type=Path, default=DEFAULT_MODEL_PATH)
+    parser.add_argument("--input-file", type=Path, default=DEFAULT_INPUT_FILE)
+    parser.add_argument("--confidence-threshold", type=float, default=0.6)
+    parser.add_argument("--review-queue", type=str, default="sre_manual_triage")
+    parser.add_argument("--output-json", type=Path, default=DEFAULT_OUTPUT_JSON)
+    parser.add_argument("--output-markdown", type=Path, default=DEFAULT_OUTPUT_MARKDOWN)
+    parser.add_argument("--max-length", type=int, default=256)
+    return parser
+
+
+def main() -> None:
+    parser = build_arg_parser()
+    args = parser.parse_args()
+    terminal_output = run_showcase(
+        model_path=args.model_path,
+        input_file=args.input_file,
+        confidence_threshold=args.confidence_threshold,
+        review_queue=args.review_queue,
+        output_json=args.output_json,
+        output_markdown=args.output_markdown,
+        max_length=args.max_length,
+    )
+    print(terminal_output)
+    print(f"JSON report saved to {args.output_json}")
+    print(f"Markdown report saved to {args.output_markdown}")
+
+
+if __name__ == "__main__":
+    main()
