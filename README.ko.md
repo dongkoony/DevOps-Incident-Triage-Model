@@ -181,6 +181,24 @@ uv run ditri-predict \
   --output-file reports/batch_predictions.jsonl
 ```
 
+### 데모 쇼케이스 리포트
+
+라이브 데모나 포트폴리오 공유용으로 대표 인시던트 예시를 한 번에 실행하고, 터미널 요약과 리포트 파일을 함께 만들 수 있습니다.
+
+```bash
+uv run ditri-demo-showcase \
+  --model-path models/devops-incident-triage \
+  --confidence-threshold 0.6 \
+  --review-queue sre_manual_triage
+```
+
+생성 산출물:
+
+- `reports/demo_showcase.json`
+- `reports/demo_showcase.md`
+
+이 흐름을 사용하면 발표용 터미널 데모, README 근거 자료, 이후 GIF/영상 촬영까지 같은 예시 세트를 기준으로 일관되게 준비할 수 있습니다.
+
 ### FastAPI
 
 ```bash

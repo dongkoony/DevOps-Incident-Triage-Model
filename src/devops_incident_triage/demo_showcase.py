@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -194,7 +194,7 @@ def run_showcase(
         review_queue=review_queue,
     )
     merged = merge_rows_with_predictions(rows, predictions)
-    generated_at = datetime.now(timezone.utc).isoformat()
+    generated_at = datetime.now(UTC).isoformat()
     payload = build_report_payload(
         predictions=merged,
         model_path=str(model_path),
