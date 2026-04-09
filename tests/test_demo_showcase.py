@@ -4,6 +4,9 @@ from pathlib import Path
 import pytest
 
 from devops_incident_triage.demo_showcase import (
+    build_markdown_report,
+    build_report_payload,
+    build_terminal_summary,
     load_showcase_rows,
     summarize_predictions,
 )
@@ -86,3 +89,92 @@ def test_summarize_predictions_counts_matches_and_reviews() -> None:
         "mismatched_labels": 1,
         "human_review_count": 1,
     }
+
+
+def test_build_report_payload_includes_metadata_and_summary() -> None:
+    rows = [
+        {
+            "id": "demo-001",
+            "title": "EKS nodes not ready",
+            "text": "EKS worker nodes became NotReady after a CNI upgrade.",
+            "expected_label": "k8s_cluster",
+            "note": "Clear Kubernetes case.",
+            "predicted_label": "k8s_cluster",
+            "final_label": "k8s_cluster",
+            "confidence": 0.91,
+            "confidence_threshold": 0.6,
+            "needs_human_review": False,
+            "recommended_queue": "k8s_cluster",
+            "scores": {"k8s_cluster": 0.91},
+        }
+    ]
+
+    payload = build_report_payload(
+        predictions=rows,
+        model_path="models/devops-incident-triage",
+        confidence_threshold=0.6,
+        review_queue="sre_manual_triage",
+        generated_at="2026-04-09T00:00:00+00:00",
+    )
+
+    assert payload["metadata"]["model_path"] == "models/devops-incident-triage"
+    assert payload["summary"]["matched_expected_labels"] == 1
+    assert payload["predictions"][0]["title"] == "EKS nodes not ready"
+
+
+def test_build_markdown_report_lists_review_examples() -> None:
+    markdown = build_markdown_report(
+        predictions=[
+            {
+                "title": "Ambiguous deploy failure",
+                "expected_label": "deployment_release",
+                "predicted_label": "aws_iam_network",
+                "confidence": 0.44,
+                "needs_human_review": True,
+                "recommended_queue": "sre_manual_triage",
+                "note": "Needs manual triage.",
+            }
+        ],
+        summary={
+            "total_examples": 1,
+            "matched_expected_labels": 0,
+            "mismatched_labels": 1,
+            "human_review_count": 1,
+        },
+        generated_at="2026-04-09T00:00:00+00:00",
+        model_path="models/devops-incident-triage",
+        confidence_threshold=0.6,
+    )
+
+    assert "# Demo Showcase Report" in markdown
+    assert (
+        "| Ambiguous deploy failure | deployment_release | aws_iam_network | 0.4400 | "
+        "yes | sre_manual_triage |" in markdown
+    )
+    assert "## Review-Required Examples" in markdown
+    assert "- **Ambiguous deploy failure**: Needs manual triage." in markdown
+
+
+def test_build_terminal_summary_is_human_readable() -> None:
+    output = build_terminal_summary(
+        predictions=[
+            {
+                "title": "EKS nodes not ready",
+                "predicted_label": "k8s_cluster",
+                "confidence": 0.9123,
+                "needs_human_review": False,
+                "recommended_queue": "k8s_cluster",
+            }
+        ],
+        summary={
+            "total_examples": 1,
+            "matched_expected_labels": 1,
+            "mismatched_labels": 0,
+            "human_review_count": 0,
+        },
+        model_path="models/devops-incident-triage",
+    )
+
+    assert "Demo showcase for models/devops-incident-triage" in output
+    assert "Matches: 1/1" in output
+    assert "- EKS nodes not ready -> k8s_cluster (0.9123, auto, queue=k8s_cluster)" in output
