@@ -112,7 +112,7 @@ def test_build_report_payload_includes_metadata_and_summary() -> None:
 
     payload = build_report_payload(
         predictions=rows,
-        model_path="models/devops-incident-triage",
+        model_path="models\\devops-incident-triage",
         confidence_threshold=0.6,
         review_queue="sre_manual_triage",
         generated_at="2026-04-09T00:00:00+00:00",
@@ -173,7 +173,7 @@ def test_build_terminal_summary_is_human_readable() -> None:
             "mismatched_labels": 0,
             "human_review_count": 0,
         },
-        model_path="models/devops-incident-triage",
+        model_path="models\\devops-incident-triage",
     )
 
     assert "Demo showcase for models/devops-incident-triage" in output
@@ -243,5 +243,11 @@ def test_run_showcase_generates_json_and_markdown(
     assert "Matches: 1/1" in terminal_output
     assert json_path.exists()
     assert markdown_path.exists()
+    assert '"model_path": "models/devops-incident-triage"' in json_path.read_text(
+        encoding="utf-8"
+    )
+    assert "- Model path: `models/devops-incident-triage`" in markdown_path.read_text(
+        encoding="utf-8"
+    )
     assert '"matched_expected_labels": 1' in json_path.read_text(encoding="utf-8")
     assert "# Demo Showcase Report" in markdown_path.read_text(encoding="utf-8")
