@@ -18,13 +18,21 @@ from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
 from devops_incident_triage.triage_policy import decide_triage, validate_confidence_threshold
 
-MODEL_PATH = Path(os.getenv("MODEL_PATH", "models/devops-incident-triage"))
+MODEL_PATH = os.getenv("MODEL_PATH", "models/devops-incident-triage")
 MAX_LENGTH = int(os.getenv("MAX_LENGTH", "256"))
 CONFIDENCE_THRESHOLD = float(os.getenv("CONFIDENCE_THRESHOLD", "0.55"))
 REVIEW_QUEUE = os.getenv("REVIEW_QUEUE", "manual_triage")
 BATCH_MAX_ITEMS = int(os.getenv("BATCH_MAX_ITEMS", "32"))
 
 logger = logging.getLogger(__name__)
+
+
+def _normalize_model_ref(model_ref: str | Path) -> str:
+    return str(model_ref).replace("\\", "/")
+
+
+def _is_local_model_ref(model_ref: str | Path) -> bool:
+    return Path(_normalize_model_ref(model_ref)).exists()
 
 HTTP_REQUESTS_TOTAL = Counter(
     "ditri_http_requests_total",
@@ -56,7 +64,7 @@ TRIAGE_DECISIONS_TOTAL = Counter(
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     validate_confidence_threshold(CONFIDENCE_THRESHOLD)
-    if MODEL_PATH.exists():
+    if _is_local_model_ref(MODEL_PATH):
         _load_artifacts()
     yield
 
@@ -155,8 +163,9 @@ class BatchPredictResponse(BaseModel):
 
 def _load_artifacts() -> None:
     global _model, _tokenizer, _id2label
-    _model = AutoModelForSequenceClassification.from_pretrained(str(MODEL_PATH))
-    _tokenizer = AutoTokenizer.from_pretrained(str(MODEL_PATH))
+    model_ref = _normalize_model_ref(MODEL_PATH)
+    _model = AutoModelForSequenceClassification.from_pretrained(model_ref)
+    _tokenizer = AutoTokenizer.from_pretrained(model_ref)
     _id2label = {int(k): v for k, v in _model.config.id2label.items()}
     _model.eval()
 
@@ -205,7 +214,7 @@ def health() -> dict[str, Any]:
     return {
         "status": "ok",
         "model_loaded": loaded,
-        "model_path": str(MODEL_PATH),
+        "model_path": _normalize_model_ref(MODEL_PATH),
         "confidence_threshold": CONFIDENCE_THRESHOLD,
         "review_queue": REVIEW_QUEUE,
         "batch_max_items": BATCH_MAX_ITEMS,

@@ -4,6 +4,10 @@ on:
   push:
   pull_request:
 
+env:
+  CI_SMOKE_MODEL_REF: hf-internal-testing/tiny-random-distilbert
+  HF_HUB_DISABLE_SYMLINKS_WARNING: "1"
+
 jobs:
   lint-and-test:
     runs-on: ubuntu-latest
@@ -52,7 +56,7 @@ jobs:
         run: |
           tmp_dir="$(mktemp -d)"
           uv run ditri-demo-showcase \
-            --model-path models/devops-incident-triage-smoke \
+            --model-path "$CI_SMOKE_MODEL_REF" \
             --confidence-threshold 0.6 \
             --review-queue sre_manual_triage \
             --output-json "$tmp_dir/demo_showcase.json" \
@@ -63,7 +67,7 @@ jobs:
   api-smoke:
     runs-on: ubuntu-latest
     env:
-      MODEL_PATH: models/devops-incident-triage-smoke
+      MODEL_PATH: hf-internal-testing/tiny-random-distilbert
       CONFIDENCE_THRESHOLD: "0.6"
       REVIEW_QUEUE: sre_manual_triage
       BATCH_MAX_ITEMS: "32"
@@ -112,7 +116,7 @@ jobs:
               raise RuntimeError(f"API did not become ready: {last_error}")
 
           assert health["status"] == "ok"
-          assert health["model_path"].endswith("models/devops-incident-triage-smoke")
+          assert health["model_path"] == "hf-internal-testing/tiny-random-distilbert"
 
           payload = json.dumps(
               {

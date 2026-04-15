@@ -10,7 +10,7 @@ from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
 from devops_incident_triage.predict import predict_batch
 
-DEFAULT_MODEL_PATH = Path("models/devops-incident-triage")
+DEFAULT_MODEL_PATH = "models/devops-incident-triage"
 DEFAULT_INPUT_FILE = Path("data/demo/incidents_showcase.jsonl")
 DEFAULT_OUTPUT_JSON = Path("reports/demo_showcase.json")
 DEFAULT_OUTPUT_MARKDOWN = Path("reports/demo_showcase.md")
@@ -18,6 +18,10 @@ DEFAULT_OUTPUT_MARKDOWN = Path("reports/demo_showcase.md")
 
 def normalize_display_path(path: str | Path) -> str:
     return str(path).replace("\\", "/")
+
+
+def normalize_model_ref(model_ref: str | Path) -> str:
+    return normalize_display_path(model_ref)
 
 
 def load_showcase_rows(input_file: Path) -> list[dict[str, str]]:
@@ -174,15 +178,16 @@ def write_markdown(markdown: str, output_file: Path) -> None:
 
 
 def load_model_bundle(
-    model_path: Path,
+    model_path: str | Path,
 ) -> tuple[AutoModelForSequenceClassification, AutoTokenizer]:
-    model = AutoModelForSequenceClassification.from_pretrained(str(model_path))
-    tokenizer = AutoTokenizer.from_pretrained(str(model_path))
+    model_ref = normalize_model_ref(model_path)
+    model = AutoModelForSequenceClassification.from_pretrained(model_ref)
+    tokenizer = AutoTokenizer.from_pretrained(model_ref)
     return model, tokenizer
 
 
 def run_showcase(
-    model_path: Path,
+    model_path: str | Path,
     input_file: Path,
     confidence_threshold: float,
     review_queue: str,
@@ -191,6 +196,7 @@ def run_showcase(
     max_length: int,
 ) -> str:
     rows = load_showcase_rows(input_file)
+    model_ref = normalize_model_ref(model_path)
     model, tokenizer = load_model_bundle(model_path)
     predictions = predict_batch(
         [row["text"] for row in rows],
@@ -204,7 +210,7 @@ def run_showcase(
     generated_at = datetime.now(UTC).isoformat()
     payload = build_report_payload(
         predictions=merged,
-        model_path=str(model_path),
+        model_path=model_ref,
         confidence_threshold=confidence_threshold,
         review_queue=review_queue,
         generated_at=generated_at,
@@ -213,13 +219,13 @@ def run_showcase(
         predictions=merged,
         summary=payload["summary"],
         generated_at=generated_at,
-        model_path=str(model_path),
+        model_path=model_ref,
         confidence_threshold=confidence_threshold,
     )
     terminal_output = build_terminal_summary(
         predictions=merged,
         summary=payload["summary"],
-        model_path=str(model_path),
+        model_path=model_ref,
     )
     write_json(payload, output_json)
     write_markdown(markdown, output_markdown)
@@ -230,7 +236,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Generate a curated demo showcase for DevOps incident triage."
     )
-    parser.add_argument("--model-path", type=Path, default=DEFAULT_MODEL_PATH)
+    parser.add_argument("--model-path", type=str, default=DEFAULT_MODEL_PATH)
     parser.add_argument("--input-file", type=Path, default=DEFAULT_INPUT_FILE)
     parser.add_argument("--confidence-threshold", type=float, default=0.6)
     parser.add_argument("--review-queue", type=str, default="sre_manual_triage")
