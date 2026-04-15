@@ -30,3 +30,121 @@ jobs:
 
       - name: Data prep smoke test
         run: uv run ditri-data-prep --input-path data/sample/incidents_synthetic.csv --output-dir data/processed --seed 42
+
+  showcase-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Install deps
+        run: uv sync --extra dev --extra api --extra viz
+
+      - name: Demo showcase smoke test
+        run: |
+          tmp_dir="$(mktemp -d)"
+          uv run ditri-demo-showcase \
+            --model-path models/devops-incident-triage-smoke \
+            --confidence-threshold 0.6 \
+            --review-queue sre_manual_triage \
+            --output-json "$tmp_dir/demo_showcase.json" \
+            --output-markdown "$tmp_dir/demo_showcase.md"
+          test -f "$tmp_dir/demo_showcase.json"
+          test -f "$tmp_dir/demo_showcase.md"
+
+  api-smoke:
+    runs-on: ubuntu-latest
+    env:
+      MODEL_PATH: models/devops-incident-triage-smoke
+      CONFIDENCE_THRESHOLD: "0.6"
+      REVIEW_QUEUE: sre_manual_triage
+      BATCH_MAX_ITEMS: "32"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Install deps
+        run: uv sync --extra dev --extra api --extra viz
+
+      - name: Start API server
+        run: |
+          uv run ditri-api > api.log 2>&1 &
+          echo $! > api.pid
+
+      - name: API smoke test
+        run: |
+          python - <<'PY'
+          import json
+          import time
+          import urllib.error
+          import urllib.request
+
+          health_url = "http://127.0.0.1:8000/health"
+          predict_url = "http://127.0.0.1:8000/predict"
+          metrics_url = "http://127.0.0.1:8000/metrics"
+
+          last_error = None
+          for _ in range(30):
+              try:
+                  with urllib.request.urlopen(health_url) as response:
+                      health = json.load(response)
+                  break
+              except Exception as exc:  # pragma: no cover - CI smoke script
+                  last_error = exc
+                  time.sleep(2)
+          else:
+              raise RuntimeError(f"API did not become ready: {last_error}")
+
+          assert health["status"] == "ok"
+          assert health["model_path"].endswith("models/devops-incident-triage-smoke")
+
+          payload = json.dumps(
+              {
+                  "text": "GitHub Actions deployment failed because IAM role assumption was denied."
+              }
+          ).encode("utf-8")
+          request = urllib.request.Request(
+              predict_url,
+              data=payload,
+              headers={"Content-Type": "application/json"},
+          )
+          with urllib.request.urlopen(request) as response:
+              prediction = json.load(response)
+              request_id = response.headers.get("X-Request-ID")
+
+          assert prediction["predicted_label"]
+          assert "confidence" in prediction
+          assert request_id
+
+          with urllib.request.urlopen(metrics_url) as response:
+              metrics = response.read().decode("utf-8")
+
+          assert "ditri_http_requests_total" in metrics
+          assert 'ditri_prediction_requests_total{endpoint="/predict"}' in metrics
+          PY
+
+      - name: Stop API server
+        if: always()
+        run: |
+          kill "$(cat api.pid)" || true
+          wait "$(cat api.pid)" 2>/dev/null || true
+
+      - name: Show API log on failure
+        if: failure()
+        run: cat api.log
