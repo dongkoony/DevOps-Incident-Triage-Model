@@ -16,6 +16,10 @@ DEFAULT_OUTPUT_JSON = Path("reports/demo_showcase.json")
 DEFAULT_OUTPUT_MARKDOWN = Path("reports/demo_showcase.md")
 
 
+def normalize_display_path(path: str | Path) -> str:
+    return str(path).replace("\\", "/")
+
+
 def load_showcase_rows(input_file: Path) -> list[dict[str, str]]:
     if not input_file.exists():
         raise FileNotFoundError(f"{input_file} not found")
@@ -66,10 +70,11 @@ def build_report_payload(
     review_queue: str,
     generated_at: str,
 ) -> dict[str, Any]:
+    normalized_model_path = normalize_display_path(model_path)
     return {
         "metadata": {
             "generated_at": generated_at,
-            "model_path": model_path,
+            "model_path": normalized_model_path,
             "confidence_threshold": confidence_threshold,
             "review_queue": review_queue,
         },
@@ -85,13 +90,14 @@ def build_markdown_report(
     model_path: str,
     confidence_threshold: float,
 ) -> str:
+    normalized_model_path = normalize_display_path(model_path)
     lines = [
         "# Demo Showcase Report",
         "",
         "Curated prediction examples for portfolio demos and repository sharing.",
         "",
         f"- Generated at: `{generated_at}`",
-        f"- Model path: `{model_path}`",
+        f"- Model path: `{normalized_model_path}`",
         f"- Confidence threshold: `{confidence_threshold}`",
         "",
         "## Summary",
@@ -127,8 +133,9 @@ def build_terminal_summary(
     summary: dict[str, int],
     model_path: str,
 ) -> str:
+    normalized_model_path = normalize_display_path(model_path)
     lines = [
-        f"Demo showcase for {model_path}",
+        f"Demo showcase for {normalized_model_path}",
         f"Examples: {summary['total_examples']}",
         f"Matches: {summary['matched_expected_labels']}/{summary['total_examples']}",
         f"Human review: {summary['human_review_count']}",

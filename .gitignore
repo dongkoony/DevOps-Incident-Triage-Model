@@ -14,6 +14,14 @@ venv/
 htmlcov/
 .DS_Store
 
+# Local Codex workflow
+docs/codex/
+scripts/codex/
+scripts/dev/
+AGENTS.md
+src/devops_incident_triage/codex_session.py
+tests/test_codex_session.py
+
 # Environment
 .env
 .env.*
