@@ -1,5 +1,19 @@
 # TODO
 
+## 2026-05-07
+
+### Today Plan
+
+- [x] Confirm `develop` is up to date; only planned documentation changes remain locally.
+- [x] Inspect and drop the old safety stash from the April pull cleanup.
+- [ ] Re-run local CI smoke checks against the current `develop` branch.
+- [ ] Re-review `README.md`, `README.ko.md`, and showcase output behavior for drift.
+- [ ] Decide whether the next CI hardening step is a conditional `docker-smoke` workflow.
+- [ ] Choose the next feature priority: threshold tuning, showcase UX polish, or benchmark/report polish.
+- [ ] Save durable handoff notes before ending the session.
+
+Detailed plan: `docs/superpowers/plans/2026-05-07-ci-followup-and-next-priority.md`
+
 ## 2026-04-15
 
 ### Completed
