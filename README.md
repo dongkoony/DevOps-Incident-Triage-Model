@@ -281,6 +281,7 @@ Detailed planning docs:
 
 - [Release strategy](docs/release-strategy.md)
 - [RAG roadmap](docs/rag-roadmap.md)
+- [Classifier core release evidence](docs/releases/release-2026.05-classifier-core.md)
 
 ## Hugging Face Publishing
 

@@ -1,11 +1,18 @@
 from pathlib import Path
 
+import pytest
+
 ROOT = Path(__file__).resolve().parents[1]
 WEB_DIR = ROOT / "web"
 INDEX = WEB_DIR / "index.html"
 MODEL_CARD = WEB_DIR / "model-card.html"
 STYLES = WEB_DIR / "styles.css"
 SCRIPT = WEB_DIR / "script.js"
+
+pytestmark = pytest.mark.skipif(
+    not WEB_DIR.exists(),
+    reason="web portfolio assets are optional and are not part of the classifier-core release",
+)
 
 
 def test_homepage_assets_exist() -> None:

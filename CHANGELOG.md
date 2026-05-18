@@ -16,6 +16,19 @@ Stable classifier baseline.
 - Docker-based local serving
 - CI and release workflow
 
+### Validation
+
+- `ruff check .` passed
+- `pytest -q` passed with `40 passed, 10 skipped`
+- Data preparation smoke passed against the synthetic starter dataset
+- Demo showcase smoke generated JSON and Markdown outputs with the portable CI model reference
+- FastAPI smoke confirmed `/health`, `/predict`, and `/metrics`
+
+### Notes
+
+- Docker build validation is still pending because the local Docker daemon was unavailable during release preparation.
+- RAG, Vector DB, `/retrieve`, `/assist`, and LLM assistant features remain out of scope for this classifier-core release.
+
 ## release-2026.06-rag-preview
 
 ### Status
