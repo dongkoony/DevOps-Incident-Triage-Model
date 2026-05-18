@@ -242,6 +242,46 @@ CONFIDENCE_THRESHOLD=0.6 REVIEW_QUEUE=sre_manual_triage BATCH_MAX_ITEMS=32 uv ru
 - [모델 벤치마킹 가이드](docs/model_benchmarking.md)
 - [포트폴리오 노트](docs/portfolio_notes.md)
 
+## 릴리즈 전략
+
+이 프로젝트는 전통적인 `v1.0.0` 중심의 Semantic Versioning만으로 로드맵을 설명하지 않고, 제품 관점의 Release Train 전략을 함께 사용합니다. 현재 Transformer 기반 분류기는 안정적인 기준선으로 유지하면서, 다음 단계에서는 Classifier + RAG + LLM 구조의 DevOps Incident Triage Assistant로 확장하는 방향을 문서화합니다.
+
+Release Train 방식은 각 릴리즈가 언제, 어떤 목적, 어떤 성숙도로 제공되는지 더 명확하게 보여줍니다. 현재 `stable` 기준선은 Transformer classifier core이며, RAG 기능은 아직 구현된 백엔드가 아니라 앞으로의 확장 계획입니다.
+
+Release Channel:
+
+| Channel | 의미 |
+|---|---|
+| `experimental` | 초기 prototype 또는 내부 검증 단계 |
+| `preview` | 기능 방향은 갖췄지만 production-ready는 아닌 단계 |
+| `beta` | 통합과 테스트가 진행됐지만 계속 진화하는 단계 |
+| `stable` | 문서, 테스트, 모니터링을 갖춘 production-style 릴리즈 |
+
+Release Roadmap:
+
+| Release tag | Channel | Focus |
+|---|---|---|
+| `release-2026.05-classifier-core` | stable | Transformer classifier, FastAPI inference, batch jobs, evaluation reports, Docker, CI |
+| `release-2026.06-rag-preview` | preview | RAG roadmap, Runbook 구조, domain-aware retrieval, Vector DB 선택, `/retrieve` API 설계 |
+| `release-2026.07-incident-assist-beta` | beta | Classifier + RAG 통합, `/assist` API 설계, LLM remediation guidance, evidence citations |
+| `release-2026.08-eval-observability` | beta | RAG 평가, groundedness checks, hallucination checks, retrieval/generation latency metrics |
+| `release-2026.09-cloud-stable` | stable | AWS deployment roadmap, production-style service architecture, monitoring, CI/CD release flow |
+
+간단 로드맵:
+
+| Phase | Outcome |
+|---|---|
+| Classifier core | 현재 Transformer classifier를 안정적인 라우팅 기준선으로 유지 |
+| RAG preview | Runbook, historical incidents, troubleshooting docs 기반 retrieval 설계 |
+| Incident assistant beta | 예측 domain, 검색 evidence, LLM-generated guidance를 결합 |
+| Evaluation and observability | retrieval 품질, groundedness, citation, latency, service health 측정 |
+| Cloud stable | AWS 배포 가능한 서비스 구조, 모니터링, 릴리즈 운영 문서화 |
+
+자세한 계획 문서:
+
+- [Release strategy](docs/release-strategy.md)
+- [RAG roadmap](docs/rag-roadmap.md)
+
 ## Hugging Face 배포
 
 ```bash
