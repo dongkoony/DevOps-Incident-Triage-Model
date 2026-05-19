@@ -232,7 +232,7 @@ This repository follows a lightweight GitFlow-style process:
 
 Current project release:
 
-- `v0.3.0`
+- `release-2026.05-classifier-core`
 
 Related operational documentation:
 

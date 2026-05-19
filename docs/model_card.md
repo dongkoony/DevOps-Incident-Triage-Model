@@ -27,7 +27,7 @@ In short: give it an incident sentence such as a deployment failure, Kubernetes 
 - Task: DevOps incident text classification
 - Problem type: multiclass classification
 - Base model: `distilbert-base-uncased`
-- Project release: `v0.3.0`
+- Project release: `release-2026.05-classifier-core`
 - Intended role: first-pass triage support, not autonomous decision-making
 
 ## Labels
