@@ -4,7 +4,9 @@
 
 The project currently provides a Transformer-based DevOps incident classifier. It accepts incident summaries, deployment failures, and operational messages, then predicts a first-pass routing domain such as `k8s_cluster`, `cicd_pipeline`, `aws_iam_network`, `deployment_release`, `container_runtime`, `observability_alerting`, or `database_state`.
 
-The current implementation includes CLI inference, FastAPI serving, batch prediction, async batch jobs, evaluation reports, Docker, CI, and release workflow documentation. It does not yet implement a RAG backend.
+The current implementation includes CLI inference, FastAPI serving, batch prediction, async batch jobs, evaluation reports, Docker, CI, release workflow documentation, and a preview retrieval layer over local runbooks.
+
+The retrieval layer uses a scikit-learn TF-IDF sparse vector index for `release-2026.06-rag-preview`. This is intentionally lightweight and local. It proves the evidence retrieval contract before introducing a production Vector DB or LLM response generator.
 
 The current public starter dataset is synthetic, so this roadmap treats the classifier as a reproducible engineering baseline rather than a validated production model.
 
@@ -60,7 +62,7 @@ Future implementation directories may include:
 - `tests/test_retrieval.py`
 - `tests/test_assist.py`
 
-These implementation files are intentionally not created in this documentation-only task.
+`src/devops_incident_triage/retrieval.py` is implemented for the preview release. `assist.py` and the assistant tests remain future work.
 
 ## Proposed APIs
 
@@ -69,6 +71,8 @@ These implementation files are intentionally not created in this documentation-o
 Purpose:
 
 Retrieve evidence documents relevant to an incident and predicted domain.
+
+Status: implemented as preview local retrieval using scikit-learn TF-IDF over `docs/runbooks/`.
 
 Example request:
 
@@ -176,7 +180,8 @@ Example response schema:
 ## Non-Goals For The Current Task
 
 - No Vector DB is installed.
-- No embedding model is selected in code.
-- No `/retrieve` or `/assist` endpoint is implemented.
+- No production embedding model or managed Vector DB is selected in code.
+- `/retrieve` is implemented as preview local retrieval.
+- No `/assist` endpoint is implemented.
 - No LLM integration is added.
 - Existing classifier-focused implementation remains intact.

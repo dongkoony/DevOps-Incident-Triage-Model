@@ -212,6 +212,7 @@ Available endpoints:
 - `POST /predict/batch`
 - `POST /predict/batch/async`
 - `GET /predict/batch/async/{job_id}`
+- `POST /retrieve`
 - `GET /metrics`
 
 Operational features:
@@ -219,7 +220,26 @@ Operational features:
 - `X-Request-ID` response header for traceability
 - confidence threshold based human review routing
 - async batch job flow for queue-like consumption
+- preview RAG retrieval over local runbook documents
 - Prometheus-compatible metrics exposure
+
+### RAG Preview Retrieval
+
+`release-2026.06-rag-preview` introduces a lightweight retrieval layer for runbook evidence. It uses a local scikit-learn TF-IDF sparse vector index over `docs/runbooks/` and applies a domain-aware ranking boost from the predicted classifier label.
+
+This is a preview retrieval implementation, not a production Vector DB deployment and not a full LLM assistant.
+
+```bash
+curl -X POST http://localhost:8000/retrieve \
+  -H "Content-Type: application/json" \
+  -d '{
+    "text": "EKS worker nodes became NotReady after a CNI upgrade.",
+    "predicted_domain": "k8s_cluster",
+    "top_k": 5
+  }'
+```
+
+The response includes cited evidence with `document_id`, `domain`, `section`, `score`, `citation`, and `excerpt` fields.
 
 ## Delivery And Release
 
@@ -262,7 +282,7 @@ Release roadmap:
 | Release tag | Channel | Focus |
 |---|---|---|
 | `release-2026.05-classifier-core` | stable | Transformer classifier, FastAPI inference, batch jobs, evaluation reports, Docker, CI |
-| `release-2026.06-rag-preview` | preview | RAG roadmap, runbook structure, domain-aware retrieval, Vector DB selection, `/retrieve` API design |
+| `release-2026.06-rag-preview` | preview | Runbook corpus loading, domain-aware TF-IDF retrieval, preview vector index selection, `/retrieve` API |
 | `release-2026.07-incident-assist-beta` | beta | Classifier + RAG integration, `/assist` API design, LLM remediation guidance, evidence citations |
 | `release-2026.08-eval-observability` | beta | RAG evaluation, groundedness checks, hallucination checks, retrieval/generation latency metrics |
 | `release-2026.09-cloud-stable` | stable | AWS deployment roadmap, production-style service architecture, monitoring, CI/CD release flow |
@@ -272,7 +292,7 @@ Concise roadmap:
 | Phase | Outcome |
 |---|---|
 | Classifier core | Keep the current Transformer classifier as the stable routing baseline |
-| RAG preview | Design retrieval over runbooks, historical incidents, and troubleshooting docs |
+| RAG preview | Retrieve cited runbook evidence with a lightweight local vector index |
 | Incident assistant beta | Combine predicted domain, retrieved evidence, and LLM-generated guidance |
 | Evaluation and observability | Measure retrieval quality, groundedness, citations, latency, and service health |
 | Cloud stable | Document an AWS-ready service shape with monitoring and release operations |
@@ -282,6 +302,8 @@ Detailed planning docs:
 - [Release strategy](docs/release-strategy.md)
 - [RAG roadmap](docs/rag-roadmap.md)
 - [Classifier core release evidence](docs/releases/release-2026.05-classifier-core.md)
+- [RAG preview release evidence](docs/releases/release-2026.06-rag-preview.md)
+- [RAG evaluation plan](docs/evaluation/rag-evaluation.md)
 
 ## Hugging Face Publishing
 

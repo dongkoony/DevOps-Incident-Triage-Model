@@ -212,6 +212,7 @@ CONFIDENCE_THRESHOLD=0.6 REVIEW_QUEUE=sre_manual_triage BATCH_MAX_ITEMS=32 uv ru
 - `POST /predict/batch`
 - `POST /predict/batch/async`
 - `GET /predict/batch/async/{job_id}`
+- `POST /retrieve`
 - `GET /metrics`
 
 운영 기능:
@@ -219,7 +220,26 @@ CONFIDENCE_THRESHOLD=0.6 REVIEW_QUEUE=sre_manual_triage BATCH_MAX_ITEMS=32 uv ru
 - `X-Request-ID` 응답 헤더를 통한 요청 추적
 - confidence threshold 기반 human review 전환
 - 큐형 워크플로우를 위한 비동기 배치 잡
+- 로컬 Runbook 문서 기반 preview RAG retrieval
 - Prometheus 호환 지표 노출
+
+### RAG Preview Retrieval
+
+`release-2026.06-rag-preview`에서는 Runbook evidence를 검색하는 경량 retrieval layer를 추가합니다. 이 구현은 `docs/runbooks/` 문서를 scikit-learn TF-IDF sparse vector index로 색인하고, classifier가 예측한 domain label을 이용해 domain-aware ranking boost를 적용합니다.
+
+이 기능은 preview retrieval 구현입니다. Production Vector DB 배포나 완성형 LLM assistant는 아직 포함하지 않습니다.
+
+```bash
+curl -X POST http://localhost:8000/retrieve \
+  -H "Content-Type: application/json" \
+  -d '{
+    "text": "EKS worker nodes became NotReady after a CNI upgrade.",
+    "predicted_domain": "k8s_cluster",
+    "top_k": 5
+  }'
+```
+
+응답에는 `document_id`, `domain`, `section`, `score`, `citation`, `excerpt`를 포함한 cited evidence가 들어갑니다.
 
 ## 전달 및 릴리즈
 
@@ -262,7 +282,7 @@ Release Roadmap:
 | Release tag | Channel | Focus |
 |---|---|---|
 | `release-2026.05-classifier-core` | stable | Transformer classifier, FastAPI inference, batch jobs, evaluation reports, Docker, CI |
-| `release-2026.06-rag-preview` | preview | RAG roadmap, Runbook 구조, domain-aware retrieval, Vector DB 선택, `/retrieve` API 설계 |
+| `release-2026.06-rag-preview` | preview | Runbook corpus loading, domain-aware TF-IDF retrieval, preview vector index 선택, `/retrieve` API |
 | `release-2026.07-incident-assist-beta` | beta | Classifier + RAG 통합, `/assist` API 설계, LLM remediation guidance, evidence citations |
 | `release-2026.08-eval-observability` | beta | RAG 평가, groundedness checks, hallucination checks, retrieval/generation latency metrics |
 | `release-2026.09-cloud-stable` | stable | AWS deployment roadmap, production-style service architecture, monitoring, CI/CD release flow |
@@ -272,7 +292,7 @@ Release Roadmap:
 | Phase | Outcome |
 |---|---|
 | Classifier core | 현재 Transformer classifier를 안정적인 라우팅 기준선으로 유지 |
-| RAG preview | Runbook, historical incidents, troubleshooting docs 기반 retrieval 설계 |
+| RAG preview | 경량 local vector index로 cited runbook evidence 검색 |
 | Incident assistant beta | 예측 domain, 검색 evidence, LLM-generated guidance를 결합 |
 | Evaluation and observability | retrieval 품질, groundedness, citation, latency, service health 측정 |
 | Cloud stable | AWS 배포 가능한 서비스 구조, 모니터링, 릴리즈 운영 문서화 |
@@ -282,6 +302,8 @@ Release Roadmap:
 - [Release strategy](docs/release-strategy.md)
 - [RAG roadmap](docs/rag-roadmap.md)
 - [Classifier core release evidence](docs/releases/release-2026.05-classifier-core.md)
+- [RAG preview release evidence](docs/releases/release-2026.06-rag-preview.md)
+- [RAG evaluation plan](docs/evaluation/rag-evaluation.md)
 
 ## Hugging Face 배포
 
