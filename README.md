@@ -181,6 +181,24 @@ uv run ditri-predict \
   --output-file reports/batch_predictions.jsonl
 ```
 
+### Demo Showcase Report
+
+For live demos and portfolio sharing, generate a curated showcase report from representative incident examples:
+
+```bash
+uv run ditri-demo-showcase \
+  --model-path models/devops-incident-triage \
+  --confidence-threshold 0.6 \
+  --review-queue sre_manual_triage
+```
+
+Generated artifacts:
+
+- `reports/demo_showcase.json`
+- `reports/demo_showcase.md`
+
+This workflow is useful when preparing terminal demos, README evidence, or GIF/video walkthroughs because the terminal summary and saved report come from the same curated examples.
+
 ### FastAPI
 
 ```bash
@@ -223,6 +241,47 @@ Related operational documentation:
 - [Architecture](docs/architecture.md)
 - [Model benchmarking guide](docs/model_benchmarking.md)
 - [Portfolio notes](docs/portfolio_notes.md)
+
+## Release Strategy
+
+This project now uses a product-style Release Train in addition to traditional semantic versioning. The classifier is already a useful stable baseline, but the next phase is broader than a single model version: the roadmap extends the project toward a future Classifier + RAG + LLM DevOps Incident Triage Assistant.
+
+Release train naming makes the roadmap easier to read as a product plan. Each release tag describes the delivery window and focus area, while the channel communicates maturity. The current stable baseline remains the Transformer-based classifier core; RAG features are planned future extensions and are not implemented in the current backend.
+
+Release channels:
+
+| Channel | Meaning |
+|---|---|
+| `experimental` | Early prototype or internal validation work |
+| `preview` | Feature-complete direction, not production-ready |
+| `beta` | Integrated and tested, but still evolving |
+| `stable` | Production-style release with documentation, tests, and monitoring |
+
+Release roadmap:
+
+| Release tag | Channel | Focus |
+|---|---|---|
+| `release-2026.05-classifier-core` | stable | Transformer classifier, FastAPI inference, batch jobs, evaluation reports, Docker, CI |
+| `release-2026.06-rag-preview` | preview | RAG roadmap, runbook structure, domain-aware retrieval, Vector DB selection, `/retrieve` API design |
+| `release-2026.07-incident-assist-beta` | beta | Classifier + RAG integration, `/assist` API design, LLM remediation guidance, evidence citations |
+| `release-2026.08-eval-observability` | beta | RAG evaluation, groundedness checks, hallucination checks, retrieval/generation latency metrics |
+| `release-2026.09-cloud-stable` | stable | AWS deployment roadmap, production-style service architecture, monitoring, CI/CD release flow |
+
+Concise roadmap:
+
+| Phase | Outcome |
+|---|---|
+| Classifier core | Keep the current Transformer classifier as the stable routing baseline |
+| RAG preview | Design retrieval over runbooks, historical incidents, and troubleshooting docs |
+| Incident assistant beta | Combine predicted domain, retrieved evidence, and LLM-generated guidance |
+| Evaluation and observability | Measure retrieval quality, groundedness, citations, latency, and service health |
+| Cloud stable | Document an AWS-ready service shape with monitoring and release operations |
+
+Detailed planning docs:
+
+- [Release strategy](docs/release-strategy.md)
+- [RAG roadmap](docs/rag-roadmap.md)
+- [Classifier core release evidence](docs/releases/release-2026.05-classifier-core.md)
 
 ## Hugging Face Publishing
 
