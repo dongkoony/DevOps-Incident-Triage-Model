@@ -16,6 +16,11 @@ from prometheus_client import CONTENT_TYPE_LATEST, Counter, Histogram, generate_
 from pydantic import BaseModel, Field
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
+from devops_incident_triage.retrieval import (
+    DEFAULT_RUNBOOK_DIR,
+    RetrievalConfigurationError,
+    RunbookRetriever,
+)
 from devops_incident_triage.triage_policy import decide_triage, validate_confidence_threshold
 
 MODEL_PATH = os.getenv("MODEL_PATH", "models/devops-incident-triage")
@@ -161,6 +166,51 @@ class BatchPredictResponse(BaseModel):
     predictions: list[PredictResponse]
 
 
+class RetrieveRequest(BaseModel):
+    text: str = Field(
+        ...,
+        min_length=5,
+        max_length=5000,
+        description="Incident summary or error log text to retrieve evidence for.",
+    )
+    predicted_domain: str = Field(
+        ...,
+        min_length=2,
+        max_length=80,
+        description="Classifier domain label used to bias retrieval.",
+    )
+    top_k: int = Field(
+        5,
+        ge=1,
+        le=10,
+        description="Maximum number of evidence sections to return.",
+    )
+
+
+class RetrievedEvidenceItem(BaseModel):
+    document_id: str
+    domain: str
+    title: str
+    section: str
+    score: float
+    citation: str
+    excerpt: str
+
+
+class RetrieveMetadata(BaseModel):
+    embedding_model: str
+    index_type: str
+    rag_enabled: bool
+    retrieval_latency_ms: float
+
+
+class RetrieveResponse(BaseModel):
+    predicted_domain: str
+    retrieval_query: str
+    evidence: list[RetrievedEvidenceItem]
+    metadata: RetrieveMetadata
+
+
 def _load_artifacts() -> None:
     global _model, _tokenizer, _id2label
     model_ref = _normalize_model_ref(MODEL_PATH)
@@ -281,6 +331,36 @@ def predict_batch(request: BatchPredictRequest, http_request: Request) -> BatchP
         auto_route_count=auto_route_count,
         human_review_count=human_review_count,
         predictions=predictions,
+    )
+
+
+@app.post("/retrieve", response_model=RetrieveResponse)
+def retrieve(request: RetrieveRequest) -> RetrieveResponse:
+    try:
+        retrieval = RunbookRetriever.from_runbook_dir(DEFAULT_RUNBOOK_DIR).retrieve(
+            text=request.text,
+            predicted_domain=request.predicted_domain,
+            top_k=request.top_k,
+        )
+    except RetrievalConfigurationError as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+    return RetrieveResponse(
+        predicted_domain=retrieval.predicted_domain,
+        retrieval_query=retrieval.retrieval_query,
+        evidence=[
+            RetrievedEvidenceItem(
+                document_id=item.document_id,
+                domain=item.domain,
+                title=item.title,
+                section=item.section,
+                score=item.score,
+                citation=item.citation,
+                excerpt=item.excerpt,
+            )
+            for item in retrieval.evidence
+        ],
+        metadata=RetrieveMetadata(**retrieval.metadata),
     )
 
 

@@ -33,15 +33,22 @@ Stable classifier baseline.
 
 ### Status
 
-Planned preview release.
+In progress preview release.
 
-### Planned
+### Added
 
-- Runbook document structure
-- RAG retrieval design
-- Vector database selection
-- `/retrieve` API design
-- Evidence-based retrieval response schema
+- Runbook corpus loading from `docs/runbooks/`
+- Domain-aware preview retrieval
+- scikit-learn TF-IDF sparse vector index selection
+- `POST /retrieve` API
+- Evidence-based retrieval response schema with citations
+- Retrieval unit and API tests
+- RAG evaluation plan
+
+### Notes
+
+- This is a preview retrieval layer, not a production Vector DB deployment.
+- `/assist` and LLM-generated remediation guidance remain planned for the incident-assist beta release.
 
 ## release-2026.07-incident-assist-beta
 
