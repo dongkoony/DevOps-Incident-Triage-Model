@@ -232,7 +232,7 @@ CONFIDENCE_THRESHOLD=0.6 REVIEW_QUEUE=sre_manual_triage BATCH_MAX_ITEMS=32 uv ru
 
 현재 프로젝트 릴리즈:
 
-- `v0.3.0`
+- `release-2026.05-classifier-core`
 
 관련 문서:
 
