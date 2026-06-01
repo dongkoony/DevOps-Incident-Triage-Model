@@ -42,6 +42,7 @@ In progress preview release.
 - scikit-learn TF-IDF sparse vector index selection
 - `POST /retrieve` API
 - Evidence-based retrieval response schema with citations
+- Prometheus retrieval request and latency metrics
 - Retrieval unit and API tests
 - RAG evaluation plan
 
@@ -49,6 +50,12 @@ In progress preview release.
 
 - This is a preview retrieval layer, not a production Vector DB deployment.
 - `/assist` and LLM-generated remediation guidance remain planned for the incident-assist beta release.
+
+### Validation
+
+- `ruff check .` passed
+- `pytest -q` passed with `47 passed, 10 skipped`
+- FastAPI smoke confirmed `/health`, `/retrieve`, and `/metrics`
 
 ## release-2026.07-incident-assist-beta
 

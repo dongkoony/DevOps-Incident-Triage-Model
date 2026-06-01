@@ -241,6 +241,8 @@ curl -X POST http://localhost:8000/retrieve \
 
 응답에는 `document_id`, `domain`, `section`, `score`, `citation`, `excerpt`를 포함한 cited evidence가 들어갑니다.
 
+Retrieval 관측 지표는 `/metrics`에서 `ditri_retrieval_requests_total`, `ditri_retrieval_latency_seconds`로 확인할 수 있습니다.
+
 ## 전달 및 릴리즈
 
 이 저장소는 GitFlow-lite 스타일로 운영합니다.
