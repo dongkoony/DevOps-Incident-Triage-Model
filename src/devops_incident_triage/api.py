@@ -16,6 +16,8 @@ from prometheus_client import CONTENT_TYPE_LATEST, Counter, Histogram, generate_
 from pydantic import BaseModel, Field
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
+from devops_incident_triage.assist import AssistResponse as DomainAssistResponse
+from devops_incident_triage.assist import build_assist_response
 from devops_incident_triage.retrieval import (
     DEFAULT_RUNBOOK_DIR,
     RetrievalConfigurationError,
@@ -73,6 +75,16 @@ RETRIEVAL_LATENCY_SECONDS = Histogram(
     "ditri_retrieval_latency_seconds",
     "Runbook retrieval latency in seconds.",
     ["predicted_domain"],
+)
+ASSIST_REQUESTS_TOTAL = Counter(
+    "ditri_assist_requests_total",
+    "Total number of assistant endpoint calls.",
+    ["predicted_domain", "route"],
+)
+ASSIST_LATENCY_SECONDS = Histogram(
+    "ditri_assist_latency_seconds",
+    "Assistant endpoint latency in seconds.",
+    ["predicted_domain", "route"],
 )
 
 
@@ -219,6 +231,62 @@ class RetrieveResponse(BaseModel):
     retrieval_query: str
     evidence: list[RetrievedEvidenceItem]
     metadata: RetrieveMetadata
+
+
+class AssistRequest(BaseModel):
+    text: str = Field(
+        ...,
+        min_length=5,
+        max_length=5000,
+        description="Incident summary or error log text to classify and assist.",
+    )
+    top_k: int = Field(
+        5,
+        ge=1,
+        le=10,
+        description="Maximum number of evidence sections to use for guidance.",
+    )
+
+
+class AssistIncidentItem(BaseModel):
+    text: str
+    predicted_domain: str
+    classifier_confidence: float
+    needs_human_review: bool
+    recommended_queue: str
+
+
+class AssistRetrievalItem(BaseModel):
+    query: str
+    evidence: list[RetrievedEvidenceItem]
+
+
+class RecommendedActionItem(BaseModel):
+    action: str
+    citation: str
+
+
+class AssistAssistantResponseItem(BaseModel):
+    summary: str
+    root_cause_candidates: list[str]
+    recommended_actions: list[RecommendedActionItem]
+    citations: list[str]
+    safety_notes: list[str]
+
+
+class AssistMetadataItem(BaseModel):
+    assistant_mode: str
+    rag_enabled: bool
+    llm_enabled: bool
+    retrieval_latency_ms: float
+    generation_latency_ms: float
+
+
+class AssistResponse(BaseModel):
+    incident: AssistIncidentItem
+    retrieval: AssistRetrievalItem
+    assistant_response: AssistAssistantResponseItem
+    metadata: AssistMetadataItem
 
 
 def _load_artifacts() -> None:
@@ -380,9 +448,95 @@ def retrieve(request: RetrieveRequest) -> RetrieveResponse:
     )
 
 
+@app.post("/assist", response_model=AssistResponse)
+def assist(request: AssistRequest, http_request: Request) -> AssistResponse:
+    started_at = time.perf_counter()
+    predicted_domain = "unknown"
+    route = "unknown"
+
+    try:
+        prediction = _predict(request.text)
+        predicted_domain = prediction.predicted_label
+        route = "human_review" if prediction.needs_human_review else "auto_route"
+        retrieval = RunbookRetriever.from_runbook_dir(DEFAULT_RUNBOOK_DIR).retrieve(
+            text=request.text,
+            predicted_domain=predicted_domain,
+            top_k=request.top_k,
+        )
+        assistant_response = build_assist_response(
+            incident_text=request.text,
+            predicted_domain=predicted_domain,
+            classifier_confidence=prediction.confidence,
+            needs_human_review=prediction.needs_human_review,
+            recommended_queue=prediction.recommended_queue,
+            retrieval=retrieval,
+        )
+    except RetrievalConfigurationError as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    except Exception as exc:  # pragma: no cover - runtime protection
+        PREDICTION_FAILURES_TOTAL.labels(endpoint="/assist").inc()
+        logger.exception(
+            "Assistant generation failed at /assist request_id=%s",
+            getattr(http_request.state, "request_id", "unknown"),
+        )
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    finally:
+        ASSIST_REQUESTS_TOTAL.labels(predicted_domain=predicted_domain, route=route).inc()
+        ASSIST_LATENCY_SECONDS.labels(predicted_domain=predicted_domain, route=route).observe(
+            time.perf_counter() - started_at
+        )
+
+    return _to_assist_response(assistant_response)
+
+
 @app.get("/metrics")
 def metrics() -> Response:
     return Response(content=generate_latest(), media_type=CONTENT_TYPE_LATEST)
+
+
+def _to_retrieved_evidence_item(item: Any) -> RetrievedEvidenceItem:
+    return RetrievedEvidenceItem(
+        document_id=item.document_id,
+        domain=item.domain,
+        title=item.title,
+        section=item.section,
+        score=item.score,
+        citation=item.citation,
+        excerpt=item.excerpt,
+    )
+
+
+def _to_assist_response(response: DomainAssistResponse) -> AssistResponse:
+    return AssistResponse(
+        incident=AssistIncidentItem(
+            text=response.incident.text,
+            predicted_domain=response.incident.predicted_domain,
+            classifier_confidence=response.incident.classifier_confidence,
+            needs_human_review=response.incident.needs_human_review,
+            recommended_queue=response.incident.recommended_queue,
+        ),
+        retrieval=AssistRetrievalItem(
+            query=response.retrieval.query,
+            evidence=[_to_retrieved_evidence_item(item) for item in response.retrieval.evidence],
+        ),
+        assistant_response=AssistAssistantResponseItem(
+            summary=response.assistant_response.summary,
+            root_cause_candidates=response.assistant_response.root_cause_candidates,
+            recommended_actions=[
+                RecommendedActionItem(action=item.action, citation=item.citation)
+                for item in response.assistant_response.recommended_actions
+            ],
+            citations=response.assistant_response.citations,
+            safety_notes=response.assistant_response.safety_notes,
+        ),
+        metadata=AssistMetadataItem(
+            assistant_mode=response.metadata.assistant_mode,
+            rag_enabled=response.metadata.rag_enabled,
+            llm_enabled=response.metadata.llm_enabled,
+            retrieval_latency_ms=response.metadata.retrieval_latency_ms,
+            generation_latency_ms=response.metadata.generation_latency_ms,
+        ),
+    )
 
 
 def main() -> None:

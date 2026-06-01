@@ -221,6 +221,7 @@ Operational features:
 - confidence threshold based human review routing
 - async batch job flow for queue-like consumption
 - preview RAG retrieval over local runbook documents
+- deterministic incident-assist beta response over classifier and retrieval evidence
 - Prometheus-compatible metrics exposure
 
 ### RAG Preview Retrieval
@@ -242,6 +243,23 @@ curl -X POST http://localhost:8000/retrieve \
 The response includes cited evidence with `document_id`, `domain`, `section`, `score`, `citation`, and `excerpt` fields.
 
 Retrieval observability is exposed through `/metrics` with `ditri_retrieval_requests_total` and `ditri_retrieval_latency_seconds`.
+
+### Incident Assist Beta
+
+`release-2026.07-incident-assist-beta` adds a deterministic `POST /assist` flow that combines classifier output, retrieved runbook evidence, citations, and safety notes.
+
+This beta endpoint is intentionally LLM-ready but not LLM-powered yet. It does not call an external model or execute remediation actions.
+
+```bash
+curl -X POST http://localhost:8000/assist \
+  -H "Content-Type: application/json" \
+  -d '{
+    "text": "GitHub Actions deployment failed because the runner could not assume the production IAM role.",
+    "top_k": 5
+  }'
+```
+
+The response includes `incident`, `retrieval`, `assistant_response`, and `metadata` sections so the guidance remains auditable and citation-grounded.
 
 ## Delivery And Release
 
@@ -268,7 +286,7 @@ Related operational documentation:
 
 This project now uses a product-style Release Train in addition to traditional semantic versioning. The classifier is already a useful stable baseline, but the next phase is broader than a single model version: the roadmap extends the project toward a future Classifier + RAG + LLM DevOps Incident Triage Assistant.
 
-Release train naming makes the roadmap easier to read as a product plan. Each release tag describes the delivery window and focus area, while the channel communicates maturity. The current stable baseline remains the Transformer-based classifier core; RAG features are planned future extensions and are not implemented in the current backend.
+Release train naming makes the roadmap easier to read as a product plan. Each release tag describes the delivery window and focus area, while the channel communicates maturity. The current stable baseline remains the Transformer-based classifier core; RAG preview retrieval is implemented, and assistant features are evolving through beta releases before any production-style LLM integration.
 
 Release channels:
 
@@ -285,7 +303,7 @@ Release roadmap:
 |---|---|---|
 | `release-2026.05-classifier-core` | stable | Transformer classifier, FastAPI inference, batch jobs, evaluation reports, Docker, CI |
 | `release-2026.06-rag-preview` | preview | Runbook corpus loading, domain-aware TF-IDF retrieval, preview vector index selection, `/retrieve` API |
-| `release-2026.07-incident-assist-beta` | beta | Classifier + RAG integration, `/assist` API design, LLM remediation guidance, evidence citations |
+| `release-2026.07-incident-assist-beta` | beta | Classifier + RAG integration, deterministic `/assist` API, evidence citations, LLM-ready response contract |
 | `release-2026.08-eval-observability` | beta | RAG evaluation, groundedness checks, hallucination checks, retrieval/generation latency metrics |
 | `release-2026.09-cloud-stable` | stable | AWS deployment roadmap, production-style service architecture, monitoring, CI/CD release flow |
 
@@ -295,7 +313,7 @@ Concise roadmap:
 |---|---|
 | Classifier core | Keep the current Transformer classifier as the stable routing baseline |
 | RAG preview | Retrieve cited runbook evidence with a lightweight local vector index |
-| Incident assistant beta | Combine predicted domain, retrieved evidence, and LLM-generated guidance |
+| Incident assistant beta | Combine predicted domain, retrieved evidence, deterministic guidance, and citations |
 | Evaluation and observability | Measure retrieval quality, groundedness, citations, latency, and service health |
 | Cloud stable | Document an AWS-ready service shape with monitoring and release operations |
 
@@ -305,6 +323,7 @@ Detailed planning docs:
 - [RAG roadmap](docs/rag-roadmap.md)
 - [Classifier core release evidence](docs/releases/release-2026.05-classifier-core.md)
 - [RAG preview release evidence](docs/releases/release-2026.06-rag-preview.md)
+- [Incident assist beta release evidence](docs/releases/release-2026.07-incident-assist-beta.md)
 - [RAG evaluation plan](docs/evaluation/rag-evaluation.md)
 
 ## Hugging Face Publishing

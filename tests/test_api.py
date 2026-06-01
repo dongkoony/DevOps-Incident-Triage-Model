@@ -177,3 +177,85 @@ def test_metrics_exposes_retrieval_counters() -> None:
         'ditri_retrieval_latency_seconds_count{predicted_domain="k8s_cluster"}'
         in metrics_payload
     )
+
+
+def test_assist_returns_classifier_retrieval_and_guidance(monkeypatch) -> None:
+    monkeypatch.setattr(api_module, "_predict", _fake_predict)
+    client = TestClient(api_module.app)
+
+    response = client.post(
+        "/assist",
+        json={
+            "text": "EKS worker nodes became NotReady after a CNI upgrade.",
+            "top_k": 2,
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["incident"]["predicted_domain"] == "k8s_cluster"
+    assert payload["incident"]["classifier_confidence"] == 0.91
+    assert payload["retrieval"]["evidence"][0]["citation"].startswith(
+        "docs/runbooks/kubernetes.md#"
+    )
+    assert payload["assistant_response"]["citations"]
+    assert payload["assistant_response"]["recommended_actions"][0]["citation"]
+    assert payload["metadata"]["assistant_mode"] == "deterministic_beta"
+    assert payload["metadata"]["rag_enabled"] is True
+    assert payload["metadata"]["llm_enabled"] is False
+
+
+def test_assist_preserves_human_review_route(monkeypatch) -> None:
+    monkeypatch.setattr(api_module, "_predict", _fake_predict)
+    client = TestClient(api_module.app)
+
+    response = client.post(
+        "/assist",
+        json={"text": "Ambiguous failure in mixed logs.", "top_k": 2},
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["incident"]["needs_human_review"] is True
+    assert payload["incident"]["recommended_queue"] == "manual_triage"
+
+
+def test_assist_validates_top_k(monkeypatch) -> None:
+    monkeypatch.setattr(api_module, "_predict", _fake_predict)
+    client = TestClient(api_module.app)
+
+    response = client.post(
+        "/assist",
+        json={
+            "text": "EKS worker nodes became NotReady after a CNI upgrade.",
+            "top_k": 0,
+        },
+    )
+
+    assert response.status_code == 422
+
+
+def test_metrics_exposes_assist_counters(monkeypatch) -> None:
+    monkeypatch.setattr(api_module, "_predict", _fake_predict)
+    client = TestClient(api_module.app)
+
+    assist_response = client.post(
+        "/assist",
+        json={
+            "text": "EKS worker nodes became NotReady after a CNI upgrade.",
+            "top_k": 2,
+        },
+    )
+    metrics_response = client.get("/metrics")
+
+    assert assist_response.status_code == 200
+    assert metrics_response.status_code == 200
+    metrics_payload = metrics_response.text
+    assert (
+        'ditri_assist_requests_total{predicted_domain="k8s_cluster",route="auto_route"}'
+        in metrics_payload
+    )
+    assert (
+        'ditri_assist_latency_seconds_count{predicted_domain="k8s_cluster",'
+        'route="auto_route"}' in metrics_payload
+    )
