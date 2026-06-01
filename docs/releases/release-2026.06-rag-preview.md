@@ -24,6 +24,7 @@ Included:
 - `POST /retrieve` FastAPI endpoint
 - Evidence response schema with document ID, domain, title, section, score, citation, and excerpt
 - Retrieval preview metadata including embedding/index type and latency
+- Prometheus metrics for retrieval request count and latency
 - Unit and API tests for retrieval behavior
 - RAG evaluation plan
 
@@ -60,21 +61,43 @@ Response evidence items include:
 }
 ```
 
-## Validation Plan
+## Validation Evidence
 
-Run before release:
+Run from branch `feature/rag-preview-release-hardening` on 2026-06-01.
 
 ```powershell
 uv run --extra dev --extra api ruff check .
+```
+
+Result:
+
+```text
+All checks passed!
+```
+
+```powershell
 uv run --extra dev --extra api pytest -q
 ```
 
-Required evidence before promotion:
+Result:
 
-- Retrieval unit tests pass
-- API tests for `/retrieve` pass
-- Existing classifier API tests pass
-- README and RAG roadmap describe preview scope accurately
+```text
+47 passed, 10 skipped
+```
+
+FastAPI smoke:
+
+```text
+GET /health -> 200
+POST /retrieve -> 200
+GET /metrics -> 200
+```
+
+Smoke evidence:
+
+- `/retrieve` returned `runbook-kubernetes` evidence for a Kubernetes `NotReady` CNI incident.
+- `/metrics` exposed `ditri_retrieval_requests_total`.
+- `/metrics` exposed `ditri_retrieval_latency_seconds`.
 
 ## Known Limitations
 

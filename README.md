@@ -241,6 +241,8 @@ curl -X POST http://localhost:8000/retrieve \
 
 The response includes cited evidence with `document_id`, `domain`, `section`, `score`, `citation`, and `excerpt` fields.
 
+Retrieval observability is exposed through `/metrics` with `ditri_retrieval_requests_total` and `ditri_retrieval_latency_seconds`.
+
 ## Delivery And Release
 
 This repository follows a lightweight GitFlow-style process:

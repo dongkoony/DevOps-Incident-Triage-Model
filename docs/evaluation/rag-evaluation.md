@@ -13,6 +13,8 @@ The current implementation uses a local scikit-learn TF-IDF sparse vector index 
 | `retrieval_hit_rate` | Expected runbook appears in top-k results | Use curated incidents with expected domain/runbook labels |
 | `citation_coverage` | Evidence items include citations | Assert every returned evidence item has a non-empty `citation` |
 | `retrieval_latency_ms` | Time spent retrieving evidence | Read `metadata.retrieval_latency_ms` from `/retrieve` responses |
+| `retrieval_requests_total` | Number of retrieval requests by predicted domain | Read `ditri_retrieval_requests_total` from `/metrics` |
+| `retrieval_latency_seconds` | API-level retrieval latency by predicted domain | Read `ditri_retrieval_latency_seconds` from `/metrics` |
 | `domain_match_rate` | Top evidence domain matches predicted domain | Compare `evidence[0].domain` with request `predicted_domain` |
 | `empty_result_rate` | Retrieval returns no evidence | Should remain zero while runbook corpus is available |
 

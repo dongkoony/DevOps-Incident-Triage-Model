@@ -64,6 +64,16 @@ TRIAGE_DECISIONS_TOTAL = Counter(
     "Total number of auto-route vs human-review decisions.",
     ["route"],
 )
+RETRIEVAL_REQUESTS_TOTAL = Counter(
+    "ditri_retrieval_requests_total",
+    "Total number of retrieval endpoint calls.",
+    ["predicted_domain"],
+)
+RETRIEVAL_LATENCY_SECONDS = Histogram(
+    "ditri_retrieval_latency_seconds",
+    "Runbook retrieval latency in seconds.",
+    ["predicted_domain"],
+)
 
 
 @asynccontextmanager
@@ -336,6 +346,7 @@ def predict_batch(request: BatchPredictRequest, http_request: Request) -> BatchP
 
 @app.post("/retrieve", response_model=RetrieveResponse)
 def retrieve(request: RetrieveRequest) -> RetrieveResponse:
+    started_at = time.perf_counter()
     try:
         retrieval = RunbookRetriever.from_runbook_dir(DEFAULT_RUNBOOK_DIR).retrieve(
             text=request.text,
@@ -344,6 +355,11 @@ def retrieve(request: RetrieveRequest) -> RetrieveResponse:
         )
     except RetrievalConfigurationError as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
+    finally:
+        RETRIEVAL_REQUESTS_TOTAL.labels(predicted_domain=request.predicted_domain).inc()
+        RETRIEVAL_LATENCY_SECONDS.labels(predicted_domain=request.predicted_domain).observe(
+            time.perf_counter() - started_at
+        )
 
     return RetrieveResponse(
         predicted_domain=retrieval.predicted_domain,

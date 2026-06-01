@@ -154,3 +154,26 @@ def test_retrieve_validates_top_k() -> None:
     )
 
     assert response.status_code == 422
+
+
+def test_metrics_exposes_retrieval_counters() -> None:
+    client = TestClient(api_module.app)
+
+    retrieve_response = client.post(
+        "/retrieve",
+        json={
+            "text": "EKS worker nodes became NotReady after a CNI upgrade.",
+            "predicted_domain": "k8s_cluster",
+            "top_k": 2,
+        },
+    )
+    metrics_response = client.get("/metrics")
+
+    assert retrieve_response.status_code == 200
+    assert metrics_response.status_code == 200
+    metrics_payload = metrics_response.text
+    assert 'ditri_retrieval_requests_total{predicted_domain="k8s_cluster"}' in metrics_payload
+    assert (
+        'ditri_retrieval_latency_seconds_count{predicted_domain="k8s_cluster"}'
+        in metrics_payload
+    )
