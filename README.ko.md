@@ -221,6 +221,7 @@ CONFIDENCE_THRESHOLD=0.6 REVIEW_QUEUE=sre_manual_triage BATCH_MAX_ITEMS=32 uv ru
 - confidence threshold 기반 human review 전환
 - 큐형 워크플로우를 위한 비동기 배치 잡
 - 로컬 Runbook 문서 기반 preview RAG retrieval
+- classifier와 retrieval evidence를 결합한 deterministic incident-assist beta 응답
 - Prometheus 호환 지표 노출
 
 ### RAG Preview Retrieval
@@ -242,6 +243,23 @@ curl -X POST http://localhost:8000/retrieve \
 응답에는 `document_id`, `domain`, `section`, `score`, `citation`, `excerpt`를 포함한 cited evidence가 들어갑니다.
 
 Retrieval 관측 지표는 `/metrics`에서 `ditri_retrieval_requests_total`, `ditri_retrieval_latency_seconds`로 확인할 수 있습니다.
+
+### Incident Assist Beta
+
+`release-2026.07-incident-assist-beta`에서는 classifier 결과, 검색된 Runbook evidence, citations, safety notes를 결합하는 deterministic `POST /assist` 흐름을 추가합니다.
+
+이 beta endpoint는 LLM을 붙일 수 있는 구조를 먼저 고정하지만, 아직 외부 LLM API를 호출하지는 않습니다. 또한 remediation action을 자동 실행하지 않습니다.
+
+```bash
+curl -X POST http://localhost:8000/assist \
+  -H "Content-Type: application/json" \
+  -d '{
+    "text": "GitHub Actions deployment failed because the runner could not assume the production IAM role.",
+    "top_k": 5
+  }'
+```
+
+응답은 `incident`, `retrieval`, `assistant_response`, `metadata` 섹션으로 나뉘며, guidance가 citation 기반으로 검토 가능하도록 구성됩니다.
 
 ## 전달 및 릴리즈
 
@@ -268,7 +286,7 @@ Retrieval 관측 지표는 `/metrics`에서 `ditri_retrieval_requests_total`, `d
 
 이 프로젝트는 전통적인 `v1.0.0` 중심의 Semantic Versioning만으로 로드맵을 설명하지 않고, 제품 관점의 Release Train 전략을 함께 사용합니다. 현재 Transformer 기반 분류기는 안정적인 기준선으로 유지하면서, 다음 단계에서는 Classifier + RAG + LLM 구조의 DevOps Incident Triage Assistant로 확장하는 방향을 문서화합니다.
 
-Release Train 방식은 각 릴리즈가 언제, 어떤 목적, 어떤 성숙도로 제공되는지 더 명확하게 보여줍니다. 현재 `stable` 기준선은 Transformer classifier core이며, RAG 기능은 아직 구현된 백엔드가 아니라 앞으로의 확장 계획입니다.
+Release Train 방식은 각 릴리즈가 언제, 어떤 목적, 어떤 성숙도로 제공되는지 더 명확하게 보여줍니다. 현재 `stable` 기준선은 Transformer classifier core이며, RAG preview retrieval은 구현되어 있고 assistant 기능은 production-style LLM 통합 전 beta release를 통해 점진적으로 진화합니다.
 
 Release Channel:
 
@@ -285,7 +303,7 @@ Release Roadmap:
 |---|---|---|
 | `release-2026.05-classifier-core` | stable | Transformer classifier, FastAPI inference, batch jobs, evaluation reports, Docker, CI |
 | `release-2026.06-rag-preview` | preview | Runbook corpus loading, domain-aware TF-IDF retrieval, preview vector index 선택, `/retrieve` API |
-| `release-2026.07-incident-assist-beta` | beta | Classifier + RAG 통합, `/assist` API 설계, LLM remediation guidance, evidence citations |
+| `release-2026.07-incident-assist-beta` | beta | Classifier + RAG 통합, deterministic `/assist` API, evidence citations, LLM-ready response contract |
 | `release-2026.08-eval-observability` | beta | RAG 평가, groundedness checks, hallucination checks, retrieval/generation latency metrics |
 | `release-2026.09-cloud-stable` | stable | AWS deployment roadmap, production-style service architecture, monitoring, CI/CD release flow |
 
@@ -295,7 +313,7 @@ Release Roadmap:
 |---|---|
 | Classifier core | 현재 Transformer classifier를 안정적인 라우팅 기준선으로 유지 |
 | RAG preview | 경량 local vector index로 cited runbook evidence 검색 |
-| Incident assistant beta | 예측 domain, 검색 evidence, LLM-generated guidance를 결합 |
+| Incident assistant beta | 예측 domain, 검색 evidence, deterministic guidance, citations를 결합 |
 | Evaluation and observability | retrieval 품질, groundedness, citation, latency, service health 측정 |
 | Cloud stable | AWS 배포 가능한 서비스 구조, 모니터링, 릴리즈 운영 문서화 |
 
@@ -305,6 +323,7 @@ Release Roadmap:
 - [RAG roadmap](docs/rag-roadmap.md)
 - [Classifier core release evidence](docs/releases/release-2026.05-classifier-core.md)
 - [RAG preview release evidence](docs/releases/release-2026.06-rag-preview.md)
+- [Incident assist beta release evidence](docs/releases/release-2026.07-incident-assist-beta.md)
 - [RAG evaluation plan](docs/evaluation/rag-evaluation.md)
 
 ## Hugging Face 배포

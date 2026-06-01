@@ -4,9 +4,11 @@
 
 The project currently provides a Transformer-based DevOps incident classifier. It accepts incident summaries, deployment failures, and operational messages, then predicts a first-pass routing domain such as `k8s_cluster`, `cicd_pipeline`, `aws_iam_network`, `deployment_release`, `container_runtime`, `observability_alerting`, or `database_state`.
 
-The current implementation includes CLI inference, FastAPI serving, batch prediction, async batch jobs, evaluation reports, Docker, CI, release workflow documentation, and a preview retrieval layer over local runbooks.
+The current implementation includes CLI inference, FastAPI serving, batch prediction, async batch jobs, evaluation reports, Docker, CI, release workflow documentation, a preview retrieval layer over local runbooks, and a deterministic incident-assist beta endpoint.
 
-The retrieval layer uses a scikit-learn TF-IDF sparse vector index for `release-2026.06-rag-preview`. This is intentionally lightweight and local. It proves the evidence retrieval contract before introducing a production Vector DB or LLM response generator.
+The retrieval layer uses a scikit-learn TF-IDF sparse vector index for `release-2026.06-rag-preview`. This is intentionally lightweight and local. It proves the evidence retrieval contract before introducing a production Vector DB.
+
+The assistant beta in `release-2026.07-incident-assist-beta` combines classifier output, retrieved evidence, deterministic guidance, citations, and safety notes. It is LLM-ready but does not call an external LLM yet.
 
 The current public starter dataset is synthetic, so this roadmap treats the classifier as a reproducible engineering baseline rather than a validated production model.
 
@@ -62,7 +64,7 @@ Future implementation directories may include:
 - `tests/test_retrieval.py`
 - `tests/test_assist.py`
 
-`src/devops_incident_triage/retrieval.py` is implemented for the preview release. `assist.py` and the assistant tests remain future work.
+`src/devops_incident_triage/retrieval.py` is implemented for the preview release. `src/devops_incident_triage/assist.py` and assistant tests are implemented for the incident-assist beta release.
 
 ## Proposed APIs
 
@@ -107,14 +109,15 @@ Example response shape:
 
 Purpose:
 
-Generate evidence-grounded triage guidance by combining classifier output, retrieved documents, and an LLM response generator.
+Generate evidence-grounded triage guidance by combining classifier output, retrieved documents, and a deterministic beta response builder.
+
+Status: implemented as a deterministic beta assistant. The response contract is LLM-ready, but no external LLM API call is made in this release.
 
 Example request:
 
 ```json
 {
   "text": "GitHub Actions deployment failed because the runner could not assume the production IAM role.",
-  "confidence_threshold": 0.6,
   "top_k": 5
 }
 ```
@@ -127,14 +130,17 @@ Example response schema:
     "text": "GitHub Actions deployment failed because the runner could not assume the production IAM role.",
     "predicted_domain": "aws_iam_network",
     "classifier_confidence": 0.82,
-    "needs_human_review": false
+    "needs_human_review": false,
+    "recommended_queue": "aws_iam_network"
   },
   "retrieval": {
-    "query": "GitHub Actions assume production IAM role denied",
+    "query": "GitHub Actions deployment failed because the runner could not assume the production IAM role.",
     "evidence": [
       {
         "document_id": "runbook-aws-iam-network",
+        "domain": "aws_iam_network",
         "title": "AWS IAM And Network Runbook",
+        "section": "First Checks",
         "citation": "docs/runbooks/aws-iam-network.md#first-checks",
         "score": 0.88,
         "excerpt": "Verify trust policy, OIDC provider, role ARN, and sts:AssumeRole permissions."
@@ -142,26 +148,30 @@ Example response schema:
     ]
   },
   "assistant_response": {
-    "summary": "The failure is likely related to IAM role assumption during deployment.",
+    "summary": "Initial triage points to the aws_iam_network domain. Review the cited runbook evidence before taking action.",
     "root_cause_candidates": [
-      "GitHub OIDC provider trust relationship changed",
-      "Deployment role ARN or audience condition is incorrect",
-      "The workflow lacks sts:AssumeRole permission"
+      "AWS IAM And Network Runbook / First Checks may explain the incident symptoms."
     ],
     "recommended_actions": [
-      "Check the IAM role trust policy for the GitHub Actions OIDC provider.",
-      "Verify the workflow uses the expected role ARN and branch condition.",
-      "Review recent IAM policy or environment protection changes."
+      {
+        "action": "Review AWS IAM And Network Runbook / First Checks and compare it with the current incident timeline.",
+        "citation": "docs/runbooks/aws-iam-network.md#first-checks"
+      }
     ],
     "citations": [
       "docs/runbooks/aws-iam-network.md#first-checks"
+    ],
+    "safety_notes": [
+      "This beta assistant does not execute remediation actions.",
+      "Validate guidance with an operator before changing production systems."
     ]
   },
   "metadata": {
     "retrieval_latency_ms": 42,
-    "generation_latency_ms": 780,
-    "model_version": "classifier-core",
-    "rag_enabled": true
+    "generation_latency_ms": 1.2,
+    "assistant_mode": "deterministic_beta",
+    "rag_enabled": true,
+    "llm_enabled": false
   }
 }
 ```
@@ -182,6 +192,6 @@ Example response schema:
 - No Vector DB is installed.
 - No production embedding model or managed Vector DB is selected in code.
 - `/retrieve` is implemented as preview local retrieval.
-- No `/assist` endpoint is implemented.
-- No LLM integration is added.
+- `/assist` is implemented as a deterministic beta assistant.
+- No external LLM integration is added.
 - Existing classifier-focused implementation remains intact.
