@@ -61,15 +61,29 @@ In progress preview release.
 
 ### Status
 
-Planned beta release.
+In progress beta release.
 
-### Planned
+### Added
 
 - Classifier + RAG integration
-- `/assist` API design
-- LLM-generated remediation guidance
-- Evidence citations
-- Root cause candidate generation
+- Deterministic `POST /assist` beta endpoint
+- Evidence-grounded assistant response schema
+- Root cause candidate generation from retrieved runbook sections
+- Recommended actions with citations
+- Assistant safety notes
+- Prometheus assistant request and latency metrics
+- Unit and API tests for assistant behavior
+
+### Notes
+
+- This beta endpoint is LLM-ready but does not call an external LLM yet.
+- The assistant does not execute remediation actions.
+- Guidance is based on retrieved runbook evidence and should be reviewed by an operator.
+
+### Validation
+
+- `ruff check .` passed
+- `pytest -q` passed with `53 passed, 10 skipped`
 
 ## release-2026.08-eval-observability
 
