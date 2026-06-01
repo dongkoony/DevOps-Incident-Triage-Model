@@ -114,3 +114,66 @@ def test_metrics_exposes_prediction_counters(monkeypatch) -> None:
     assert 'ditri_prediction_requests_total{endpoint="/predict/batch"}' in metrics_payload
     assert 'ditri_triage_decisions_total{route="auto_route"}' in metrics_payload
     assert 'ditri_triage_decisions_total{route="human_review"}' in metrics_payload
+
+
+def test_retrieve_returns_cited_runbook_evidence() -> None:
+    client = TestClient(api_module.app)
+
+    response = client.post(
+        "/retrieve",
+        json={
+            "text": "EKS worker nodes became NotReady after a CNI upgrade.",
+            "predicted_domain": "k8s_cluster",
+            "top_k": 2,
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["predicted_domain"] == "k8s_cluster"
+    assert payload["retrieval_query"] == "EKS worker nodes became NotReady after a CNI upgrade."
+    assert len(payload["evidence"]) == 2
+    assert payload["evidence"][0]["document_id"] == "runbook-kubernetes"
+    assert payload["evidence"][0]["domain"] == "k8s_cluster"
+    assert payload["evidence"][0]["citation"].startswith("docs/runbooks/kubernetes.md#")
+    assert payload["metadata"]["embedding_model"] == "scikit-learn-tfidf-preview"
+    assert payload["metadata"]["index_type"] == "in_memory_sparse_vector_index"
+    assert payload["metadata"]["rag_enabled"] is True
+
+
+def test_retrieve_validates_top_k() -> None:
+    client = TestClient(api_module.app)
+
+    response = client.post(
+        "/retrieve",
+        json={
+            "text": "EKS worker nodes became NotReady after a CNI upgrade.",
+            "predicted_domain": "k8s_cluster",
+            "top_k": 0,
+        },
+    )
+
+    assert response.status_code == 422
+
+
+def test_metrics_exposes_retrieval_counters() -> None:
+    client = TestClient(api_module.app)
+
+    retrieve_response = client.post(
+        "/retrieve",
+        json={
+            "text": "EKS worker nodes became NotReady after a CNI upgrade.",
+            "predicted_domain": "k8s_cluster",
+            "top_k": 2,
+        },
+    )
+    metrics_response = client.get("/metrics")
+
+    assert retrieve_response.status_code == 200
+    assert metrics_response.status_code == 200
+    metrics_payload = metrics_response.text
+    assert 'ditri_retrieval_requests_total{predicted_domain="k8s_cluster"}' in metrics_payload
+    assert (
+        'ditri_retrieval_latency_seconds_count{predicted_domain="k8s_cluster"}'
+        in metrics_payload
+    )

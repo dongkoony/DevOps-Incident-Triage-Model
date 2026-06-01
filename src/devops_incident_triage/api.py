@@ -16,6 +16,11 @@ from prometheus_client import CONTENT_TYPE_LATEST, Counter, Histogram, generate_
 from pydantic import BaseModel, Field
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
+from devops_incident_triage.retrieval import (
+    DEFAULT_RUNBOOK_DIR,
+    RetrievalConfigurationError,
+    RunbookRetriever,
+)
 from devops_incident_triage.triage_policy import decide_triage, validate_confidence_threshold
 
 MODEL_PATH = os.getenv("MODEL_PATH", "models/devops-incident-triage")
@@ -58,6 +63,16 @@ TRIAGE_DECISIONS_TOTAL = Counter(
     "ditri_triage_decisions_total",
     "Total number of auto-route vs human-review decisions.",
     ["route"],
+)
+RETRIEVAL_REQUESTS_TOTAL = Counter(
+    "ditri_retrieval_requests_total",
+    "Total number of retrieval endpoint calls.",
+    ["predicted_domain"],
+)
+RETRIEVAL_LATENCY_SECONDS = Histogram(
+    "ditri_retrieval_latency_seconds",
+    "Runbook retrieval latency in seconds.",
+    ["predicted_domain"],
 )
 
 
@@ -159,6 +174,51 @@ class BatchPredictResponse(BaseModel):
     auto_route_count: int
     human_review_count: int
     predictions: list[PredictResponse]
+
+
+class RetrieveRequest(BaseModel):
+    text: str = Field(
+        ...,
+        min_length=5,
+        max_length=5000,
+        description="Incident summary or error log text to retrieve evidence for.",
+    )
+    predicted_domain: str = Field(
+        ...,
+        min_length=2,
+        max_length=80,
+        description="Classifier domain label used to bias retrieval.",
+    )
+    top_k: int = Field(
+        5,
+        ge=1,
+        le=10,
+        description="Maximum number of evidence sections to return.",
+    )
+
+
+class RetrievedEvidenceItem(BaseModel):
+    document_id: str
+    domain: str
+    title: str
+    section: str
+    score: float
+    citation: str
+    excerpt: str
+
+
+class RetrieveMetadata(BaseModel):
+    embedding_model: str
+    index_type: str
+    rag_enabled: bool
+    retrieval_latency_ms: float
+
+
+class RetrieveResponse(BaseModel):
+    predicted_domain: str
+    retrieval_query: str
+    evidence: list[RetrievedEvidenceItem]
+    metadata: RetrieveMetadata
 
 
 def _load_artifacts() -> None:
@@ -281,6 +341,42 @@ def predict_batch(request: BatchPredictRequest, http_request: Request) -> BatchP
         auto_route_count=auto_route_count,
         human_review_count=human_review_count,
         predictions=predictions,
+    )
+
+
+@app.post("/retrieve", response_model=RetrieveResponse)
+def retrieve(request: RetrieveRequest) -> RetrieveResponse:
+    started_at = time.perf_counter()
+    try:
+        retrieval = RunbookRetriever.from_runbook_dir(DEFAULT_RUNBOOK_DIR).retrieve(
+            text=request.text,
+            predicted_domain=request.predicted_domain,
+            top_k=request.top_k,
+        )
+    except RetrievalConfigurationError as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    finally:
+        RETRIEVAL_REQUESTS_TOTAL.labels(predicted_domain=request.predicted_domain).inc()
+        RETRIEVAL_LATENCY_SECONDS.labels(predicted_domain=request.predicted_domain).observe(
+            time.perf_counter() - started_at
+        )
+
+    return RetrieveResponse(
+        predicted_domain=retrieval.predicted_domain,
+        retrieval_query=retrieval.retrieval_query,
+        evidence=[
+            RetrievedEvidenceItem(
+                document_id=item.document_id,
+                domain=item.domain,
+                title=item.title,
+                section=item.section,
+                score=item.score,
+                citation=item.citation,
+                excerpt=item.excerpt,
+            )
+            for item in retrieval.evidence
+        ],
+        metadata=RetrieveMetadata(**retrieval.metadata),
     )
 
 
