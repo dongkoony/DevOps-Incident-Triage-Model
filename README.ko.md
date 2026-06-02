@@ -261,6 +261,12 @@ curl -X POST http://localhost:8000/assist \
 
 응답은 `incident`, `retrieval`, `assistant_response`, `metadata` 섹션으로 나뉘며, guidance가 citation 기반으로 검토 가능하도록 구성됩니다.
 
+### LLM Wiki Preview
+
+`release-2026.08-incident-wiki-preview`에서는 SRE Agent 패턴을 참고한 repository-backed LLM Wiki knowledge layer를 추가합니다. Wiki page는 runbook, SOP-like check, diagnostic, service context를 명시적인 metadata와 함께 구성합니다.
+
+이 preview는 외부 LLM API를 호출하지 않습니다. 대신 `/retrieve`와 `/assist` evidence에 Wiki metadata를 추가해, 이후 LLM 응답이 citation-grounded 상태를 유지할 수 있는 기반을 만듭니다.
+
 ## 전달 및 릴리즈
 
 이 저장소는 GitFlow-lite 스타일로 운영합니다.
@@ -304,8 +310,9 @@ Release Roadmap:
 | `release-2026.05-classifier-core` | stable | Transformer classifier, FastAPI inference, batch jobs, evaluation reports, Docker, CI |
 | `release-2026.06-rag-preview` | preview | Runbook corpus loading, domain-aware TF-IDF retrieval, preview vector index 선택, `/retrieve` API |
 | `release-2026.07-incident-assist-beta` | beta | Classifier + RAG 통합, deterministic `/assist` API, evidence citations, LLM-ready response contract |
-| `release-2026.08-eval-observability` | beta | RAG 평가, groundedness checks, hallucination checks, retrieval/generation latency metrics |
-| `release-2026.09-cloud-stable` | stable | AWS deployment roadmap, production-style service architecture, monitoring, CI/CD release flow |
+| `release-2026.08-incident-wiki-preview` | preview | Repository-backed LLM Wiki, Wiki metadata schema, Wiki-aware retrieval and assist evidence |
+| `release-2026.09-eval-observability` | beta | RAG/Wiki 평가, groundedness checks, hallucination checks, retrieval/generation latency metrics |
+| `release-2026.10-cloud-stable` | stable | AWS deployment roadmap, production-style service architecture, monitoring, CI/CD release flow |
 
 간단 로드맵:
 
@@ -314,6 +321,7 @@ Release Roadmap:
 | Classifier core | 현재 Transformer classifier를 안정적인 라우팅 기준선으로 유지 |
 | RAG preview | 경량 local vector index로 cited runbook evidence 검색 |
 | Incident assistant beta | 예측 domain, 검색 evidence, deterministic guidance, citations를 결합 |
+| LLM Wiki preview | runbook, SOP-like check, diagnostic, service context를 Wiki evidence로 구성 |
 | Evaluation and observability | retrieval 품질, groundedness, citation, latency, service health 측정 |
 | Cloud stable | AWS 배포 가능한 서비스 구조, 모니터링, 릴리즈 운영 문서화 |
 
@@ -324,6 +332,7 @@ Release Roadmap:
 - [Classifier core release evidence](docs/releases/release-2026.05-classifier-core.md)
 - [RAG preview release evidence](docs/releases/release-2026.06-rag-preview.md)
 - [Incident assist beta release evidence](docs/releases/release-2026.07-incident-assist-beta.md)
+- [Incident Wiki preview release evidence](docs/releases/release-2026.08-incident-wiki-preview.md)
 - [RAG evaluation plan](docs/evaluation/rag-evaluation.md)
 
 ## Hugging Face 배포

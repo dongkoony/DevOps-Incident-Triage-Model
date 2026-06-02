@@ -10,6 +10,7 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
 DEFAULT_RUNBOOK_DIR = Path("docs/runbooks")
+DEFAULT_WIKI_DIR = Path("docs/wiki")
 EMBEDDING_MODEL = "scikit-learn-tfidf-preview"
 INDEX_TYPE = "in_memory_sparse_vector_index"
 DOMAIN_BOOST = 0.15
@@ -26,9 +27,28 @@ RUNBOOK_DOMAIN_BY_FILENAME = {
 
 
 @dataclass(frozen=True)
+class WikiMetadata:
+    wiki_id: str
+    source_type: str
+    domain: str
+    service: str
+    severity: str
+    owner: str
+    last_reviewed: str
+    confidence_level: str
+
+
+@dataclass(frozen=True)
 class RunbookSection:
     document_id: str
+    wiki_id: str
+    source_type: str
     domain: str
+    service: str
+    severity: str
+    owner: str
+    last_reviewed: str
+    confidence_level: str
     title: str
     section: str
     text: str
@@ -44,6 +64,13 @@ class RetrievedEvidence:
     score: float
     citation: str
     excerpt: str
+    wiki_id: str = ""
+    source_type: str = "runbook"
+    service: str = "general"
+    severity: str = "unknown"
+    owner: str = "portfolio"
+    last_reviewed: str = "unknown"
+    confidence_level: str = "placeholder"
 
 
 @dataclass(frozen=True)
@@ -58,6 +85,45 @@ class RetrievalConfigurationError(RuntimeError):
     """Raised when the local preview corpus cannot be loaded."""
 
 
+WIKI_METADATA_KEYS = {
+    "Wiki ID": "wiki_id",
+    "Source type": "source_type",
+    "Domain label": "domain",
+    "Service": "service",
+    "Severity": "severity",
+    "Owner": "owner",
+    "Last reviewed": "last_reviewed",
+    "Confidence level": "confidence_level",
+}
+
+
+def parse_wiki_metadata(path: Path) -> WikiMetadata:
+    values: dict[str, str] = {}
+    in_metadata = False
+
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if line.strip() == "## Wiki Metadata":
+            in_metadata = True
+            continue
+        if in_metadata and line.startswith("## "):
+            break
+        if not in_metadata or not line.startswith("- ") or ":" not in line:
+            continue
+
+        key, raw_value = line.removeprefix("- ").split(":", 1)
+        field_name = WIKI_METADATA_KEYS.get(key.strip())
+        if field_name:
+            values[field_name] = raw_value.strip().strip("`")
+
+    missing = sorted(set(WIKI_METADATA_KEYS.values()) - set(values))
+    if missing:
+        raise RetrievalConfigurationError(
+            f"Wiki metadata missing required fields in {path}: {', '.join(missing)}"
+        )
+
+    return WikiMetadata(**values)
+
+
 def _slugify_heading(heading: str) -> str:
     slug = re.sub(r"[^a-z0-9\s-]", "", heading.lower())
     slug = re.sub(r"\s+", "-", slug.strip())
@@ -70,6 +136,20 @@ def _document_id_from_path(path: Path) -> str:
 
 def _domain_from_path(path: Path) -> str:
     return RUNBOOK_DOMAIN_BY_FILENAME.get(path.name, "unknown")
+
+
+def _default_wiki_metadata_for_runbook(path: Path) -> WikiMetadata:
+    document_id = _document_id_from_path(path)
+    return WikiMetadata(
+        wiki_id=document_id,
+        source_type="runbook",
+        domain=_domain_from_path(path),
+        service="general",
+        severity="unknown",
+        owner="portfolio",
+        last_reviewed="unknown",
+        confidence_level="placeholder",
+    )
 
 
 def _clean_excerpt(text: str, max_length: int = 220) -> str:
@@ -101,41 +181,59 @@ def _parse_markdown_sections(path: Path) -> list[tuple[str, str]]:
     return [
         (heading, "\n".join(lines).strip())
         for heading, lines in sections
-        if "\n".join(lines).strip()
+        if heading != "Wiki Metadata" and "\n".join(lines).strip()
     ]
 
 
-def load_runbook_corpus(runbook_dir: Path = DEFAULT_RUNBOOK_DIR) -> list[RunbookSection]:
+def load_runbook_corpus(
+    runbook_dir: Path = DEFAULT_RUNBOOK_DIR,
+    wiki_dir: Path = DEFAULT_WIKI_DIR,
+) -> list[RunbookSection]:
     if not runbook_dir.exists():
         raise RetrievalConfigurationError(f"Runbook directory not found: {runbook_dir}")
 
     corpus: list[RunbookSection] = []
     for path in sorted(runbook_dir.glob("*.md")):
-        domain = _domain_from_path(path)
-        document_id = _document_id_from_path(path)
-        title = ""
-        for line in path.read_text(encoding="utf-8").splitlines():
-            if line.startswith("# "):
-                title = line.removeprefix("# ").strip()
-                break
-        if not title:
-            title = path.stem.replace("-", " ").title()
+        corpus.extend(_load_markdown_corpus_item(path, _default_wiki_metadata_for_runbook(path)))
 
-        for heading, text in _parse_markdown_sections(path):
-            corpus.append(
-                RunbookSection(
-                    document_id=document_id,
-                    domain=domain,
-                    title=title,
-                    section=heading,
-                    text=text,
-                    citation=f"{path.as_posix()}#{_slugify_heading(heading)}",
-                )
-            )
+    if wiki_dir.exists():
+        for path in sorted(wiki_dir.glob("**/*.md")):
+            if path.name.lower() == "readme.md":
+                continue
+            corpus.extend(_load_markdown_corpus_item(path, parse_wiki_metadata(path)))
 
     if not corpus:
         raise RetrievalConfigurationError(f"No runbook sections found in {runbook_dir}")
     return corpus
+
+
+def _load_markdown_corpus_item(path: Path, metadata: WikiMetadata) -> list[RunbookSection]:
+    title = ""
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if line.startswith("# "):
+            title = line.removeprefix("# ").strip()
+            break
+    if not title:
+        title = path.stem.replace("-", " ").title()
+
+    return [
+        RunbookSection(
+            document_id=metadata.wiki_id,
+            wiki_id=metadata.wiki_id,
+            source_type=metadata.source_type,
+            domain=metadata.domain,
+            service=metadata.service,
+            severity=metadata.severity,
+            owner=metadata.owner,
+            last_reviewed=metadata.last_reviewed,
+            confidence_level=metadata.confidence_level,
+            title=title,
+            section=heading,
+            text=text,
+            citation=f"{path.as_posix()}#{_slugify_heading(heading)}",
+        )
+        for heading, text in _parse_markdown_sections(path)
+    ]
 
 
 class RunbookRetriever:
@@ -167,7 +265,14 @@ class RunbookRetriever:
         evidence = [
             RetrievedEvidence(
                 document_id=section.document_id,
+                wiki_id=section.wiki_id,
+                source_type=section.source_type,
                 domain=section.domain,
+                service=section.service,
+                severity=section.severity,
+                owner=section.owner,
+                last_reviewed=section.last_reviewed,
+                confidence_level=section.confidence_level,
                 title=section.title,
                 section=section.section,
                 score=round(score, 6),

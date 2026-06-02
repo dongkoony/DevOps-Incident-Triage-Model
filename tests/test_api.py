@@ -133,9 +133,17 @@ def test_retrieve_returns_cited_runbook_evidence() -> None:
     assert payload["predicted_domain"] == "k8s_cluster"
     assert payload["retrieval_query"] == "EKS worker nodes became NotReady after a CNI upgrade."
     assert len(payload["evidence"]) == 2
-    assert payload["evidence"][0]["document_id"] == "runbook-kubernetes"
-    assert payload["evidence"][0]["domain"] == "k8s_cluster"
-    assert payload["evidence"][0]["citation"].startswith("docs/runbooks/kubernetes.md#")
+    evidence = payload["evidence"][0]
+    assert evidence["document_id"] in {"runbook-kubernetes", "wiki-k8s-node-readiness"}
+    assert evidence["domain"] == "k8s_cluster"
+    assert evidence["citation"].startswith(("docs/runbooks/kubernetes.md#", "docs/wiki/"))
+    assert "wiki_id" in evidence
+    assert "source_type" in evidence
+    assert "service" in evidence
+    assert "severity" in evidence
+    assert "owner" in evidence
+    assert "last_reviewed" in evidence
+    assert "confidence_level" in evidence
     assert payload["metadata"]["embedding_model"] == "scikit-learn-tfidf-preview"
     assert payload["metadata"]["index_type"] == "in_memory_sparse_vector_index"
     assert payload["metadata"]["rag_enabled"] is True
@@ -196,8 +204,12 @@ def test_assist_returns_classifier_retrieval_and_guidance(monkeypatch) -> None:
     assert payload["incident"]["predicted_domain"] == "k8s_cluster"
     assert payload["incident"]["classifier_confidence"] == 0.91
     assert payload["retrieval"]["evidence"][0]["citation"].startswith(
-        "docs/runbooks/kubernetes.md#"
+        ("docs/runbooks/kubernetes.md#", "docs/wiki/")
     )
+    assist_evidence = payload["retrieval"]["evidence"][0]
+    assert "wiki_id" in assist_evidence
+    assert "source_type" in assist_evidence
+    assert "confidence_level" in assist_evidence
     assert payload["assistant_response"]["citations"]
     assert payload["assistant_response"]["recommended_actions"][0]["citation"]
     assert payload["metadata"]["assistant_mode"] == "deterministic_beta"

@@ -211,7 +211,14 @@ class RetrieveRequest(BaseModel):
 
 class RetrievedEvidenceItem(BaseModel):
     document_id: str
+    wiki_id: str
+    source_type: str
     domain: str
+    service: str
+    severity: str
+    owner: str
+    last_reviewed: str
+    confidence_level: str
     title: str
     section: str
     score: float
@@ -435,7 +442,14 @@ def retrieve(request: RetrieveRequest) -> RetrieveResponse:
         evidence=[
             RetrievedEvidenceItem(
                 document_id=item.document_id,
+                wiki_id=item.wiki_id,
+                source_type=item.source_type,
                 domain=item.domain,
+                service=item.service,
+                severity=item.severity,
+                owner=item.owner,
+                last_reviewed=item.last_reviewed,
+                confidence_level=item.confidence_level,
                 title=item.title,
                 section=item.section,
                 score=item.score,
@@ -497,7 +511,14 @@ def metrics() -> Response:
 def _to_retrieved_evidence_item(item: Any) -> RetrievedEvidenceItem:
     return RetrievedEvidenceItem(
         document_id=item.document_id,
+        wiki_id=item.wiki_id,
+        source_type=item.source_type,
         domain=item.domain,
+        service=item.service,
+        severity=item.severity,
+        owner=item.owner,
+        last_reviewed=item.last_reviewed,
+        confidence_level=item.confidence_level,
         title=item.title,
         section=item.section,
         score=item.score,
