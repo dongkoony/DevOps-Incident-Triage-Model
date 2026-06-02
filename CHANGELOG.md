@@ -85,7 +85,31 @@ In progress beta release.
 - `ruff check .` passed
 - `pytest -q` passed with `53 passed, 10 skipped`
 
-## release-2026.08-eval-observability
+## release-2026.08-incident-wiki-preview
+
+### Status
+
+Preview release candidate.
+
+### Added
+
+- Repository-backed LLM Wiki structure under `docs/wiki/`
+- Wiki metadata schema for incident knowledge pages
+- Wiki-aware retrieval evidence
+- `/retrieve` and `/assist` response metadata enrichment
+
+### Notes
+
+- No external LLM API is called in this release.
+- Wiki pages are portfolio examples, not real production incident records.
+- The retriever still uses local scikit-learn TF-IDF.
+
+### Validation
+
+- `ruff check .` passed
+- `pytest -q` passed with `56 passed, 10 skipped`
+
+## release-2026.09-eval-observability
 
 ### Status
 
@@ -94,12 +118,13 @@ Planned beta release.
 ### Planned
 
 - RAG quality evaluation
+- Wiki source coverage evaluation
 - Groundedness checks
 - Hallucination checks
 - Retrieval and generation latency metrics
 - Prometheus-style metric expansion
 
-## release-2026.09-cloud-stable
+## release-2026.10-cloud-stable
 
 ### Status
 

@@ -4,44 +4,49 @@
 
 The project currently provides a Transformer-based DevOps incident classifier. It accepts incident summaries, deployment failures, and operational messages, then predicts a first-pass routing domain such as `k8s_cluster`, `cicd_pipeline`, `aws_iam_network`, `deployment_release`, `container_runtime`, `observability_alerting`, or `database_state`.
 
-The current implementation includes CLI inference, FastAPI serving, batch prediction, async batch jobs, evaluation reports, Docker, CI, release workflow documentation, a preview retrieval layer over local runbooks, and a deterministic incident-assist beta endpoint.
+The current implementation includes CLI inference, FastAPI serving, batch prediction, async batch jobs, evaluation reports, Docker, CI, release workflow documentation, a preview retrieval layer over local runbooks, a deterministic incident-assist beta endpoint, and a repository-backed LLM Wiki knowledge layer.
 
 The retrieval layer uses a scikit-learn TF-IDF sparse vector index for `release-2026.06-rag-preview`. This is intentionally lightweight and local. It proves the evidence retrieval contract before introducing a production Vector DB.
 
 The assistant beta in `release-2026.07-incident-assist-beta` combines classifier output, retrieved evidence, deterministic guidance, citations, and safety notes. It is LLM-ready but does not call an external LLM yet.
 
+The LLM Wiki preview in `release-2026.08-incident-wiki-preview` treats runbooks, SOP-like checks, diagnostics, and service context as a repository-backed incident knowledge layer. RAG retrieval remains the mechanism that searches Wiki pages and returns cited evidence.
+
 The current public starter dataset is synthetic, so this roadmap treats the classifier as a reproducible engineering baseline rather than a validated production model.
 
 ## Target State
 
-The target direction is a Classifier + RAG + LLM DevOps Incident Triage Assistant. The classifier narrows the operational domain, retrieval finds relevant evidence, and an LLM generates remediation guidance grounded in cited runbooks or historical troubleshooting material.
+The target direction is a Classifier + LLM Wiki + RAG + LLM DevOps Incident Triage Assistant. The classifier narrows the operational domain, the Wiki organizes incident knowledge, retrieval finds relevant evidence, and an LLM can later generate remediation guidance grounded in cited Wiki pages.
 
 ```text
 Incident Text
-↓
+->
 Incident Classifier
-↓
+->
 Predicted Domain
-↓
+->
+LLM Wiki Knowledge Layer
+->
 Domain-aware Retriever
-↓
-Runbooks / Historical Incidents / Troubleshooting Docs
-↓
+->
+Runbooks / SOPs / Diagnostics / Service Context / Past Incidents
+->
 LLM Response Generator
-↓
+->
 Evidence-grounded Remediation Guidance
 ```
 
-## Why Classifier + RAG Is Better Than RAG-Only
+## Why Classifier + Wiki Retrieval Is Better Than RAG-Only
 
-A RAG-only assistant must search across all operational knowledge for every request. That can increase latency, add irrelevant context, and make it harder to explain why a runbook was selected.
+A RAG-only assistant must search across all operational knowledge for every request. That can increase latency, add irrelevant context, and make it harder to explain why a document was selected.
 
-The classifier provides an initial domain prior. That makes retrieval more focused:
+The classifier provides an initial domain prior. The LLM Wiki gives retrieved evidence a product-facing knowledge structure:
 
 - Kubernetes incidents can prioritize Kubernetes runbooks and cluster troubleshooting docs.
 - CI/CD incidents can prioritize pipeline, deployment, and runner documentation.
 - AWS IAM/network incidents can prioritize identity, permission, VPC, and routing material.
 - Database incidents can prioritize connection, lock, replication, and storage checks.
+- Wiki metadata can describe source type, service, severity, owner, review date, and confidence level.
 
 This does not replace retrieval ranking. It gives retrieval a safer starting point and preserves human review when confidence is low.
 
@@ -57,14 +62,24 @@ Runbook placeholders:
 - `docs/runbooks/container-runtime.md`
 - `docs/runbooks/deployment-release.md`
 
-Future implementation directories may include:
+LLM Wiki pages:
+
+- `docs/wiki/kubernetes/node-readiness.md`
+- `docs/wiki/cicd/pipeline-failure.md`
+- `docs/wiki/aws-iam-network/role-assumption.md`
+- `docs/wiki/database/connection-saturation.md`
+- `docs/wiki/observability/alert-noise.md`
+- `docs/wiki/container-runtime/image-pull-failure.md`
+- `docs/wiki/deployment-release/rollback.md`
+
+Implementation files:
 
 - `src/devops_incident_triage/retrieval.py`
 - `src/devops_incident_triage/assist.py`
 - `tests/test_retrieval.py`
 - `tests/test_assist.py`
 
-`src/devops_incident_triage/retrieval.py` is implemented for the preview release. `src/devops_incident_triage/assist.py` and assistant tests are implemented for the incident-assist beta release.
+`src/devops_incident_triage/retrieval.py` is implemented for the preview release and now loads both runbooks and Wiki pages. `src/devops_incident_triage/assist.py` and assistant tests are implemented for the incident-assist beta release.
 
 ## Proposed APIs
 
@@ -74,7 +89,7 @@ Purpose:
 
 Retrieve evidence documents relevant to an incident and predicted domain.
 
-Status: implemented as preview local retrieval using scikit-learn TF-IDF over `docs/runbooks/`.
+Status: implemented as preview local retrieval using scikit-learn TF-IDF over `docs/runbooks/` and `docs/wiki/`.
 
 Example request:
 
@@ -94,12 +109,20 @@ Example response shape:
   "retrieval_query": "EKS worker nodes NotReady CNI upgrade pods pending",
   "evidence": [
     {
-      "document_id": "runbook-kubernetes",
-      "title": "Kubernetes Cluster Runbook",
+      "document_id": "wiki-k8s-node-readiness",
+      "wiki_id": "wiki-k8s-node-readiness",
+      "source_type": "runbook",
+      "domain": "k8s_cluster",
+      "service": "kubernetes-platform",
+      "severity": "medium",
+      "owner": "platform-team",
+      "last_reviewed": "2026-06-02",
+      "confidence_level": "preview",
+      "title": "Kubernetes Node Readiness Wiki",
       "section": "First Checks",
-      "score": 0.83,
-      "citation": "docs/runbooks/kubernetes.md#first-checks",
-      "excerpt": "Check node readiness, recent CNI changes, pod scheduling events, and kubelet status."
+      "score": 0.87,
+      "citation": "docs/wiki/kubernetes/node-readiness.md#first-checks",
+      "excerpt": "Check node readiness, recent CNI changes, and kubelet status."
     }
   ]
 }
@@ -137,29 +160,32 @@ Example response schema:
     "query": "GitHub Actions deployment failed because the runner could not assume the production IAM role.",
     "evidence": [
       {
-        "document_id": "runbook-aws-iam-network",
+        "document_id": "wiki-aws-iam-role-assumption",
+        "wiki_id": "wiki-aws-iam-role-assumption",
+        "source_type": "runbook",
         "domain": "aws_iam_network",
-        "title": "AWS IAM And Network Runbook",
+        "service": "aws-platform",
+        "title": "AWS IAM Role Assumption Wiki",
         "section": "First Checks",
-        "citation": "docs/runbooks/aws-iam-network.md#first-checks",
+        "citation": "docs/wiki/aws-iam-network/role-assumption.md#first-checks",
         "score": 0.88,
-        "excerpt": "Verify trust policy, OIDC provider, role ARN, and sts:AssumeRole permissions."
+        "excerpt": "Verify the role ARN, trust policy, and OIDC audience conditions."
       }
     ]
   },
   "assistant_response": {
     "summary": "Initial triage points to the aws_iam_network domain. Review the cited runbook evidence before taking action.",
     "root_cause_candidates": [
-      "AWS IAM And Network Runbook / First Checks may explain the incident symptoms."
+      "AWS IAM Role Assumption Wiki / First Checks may explain the incident symptoms."
     ],
     "recommended_actions": [
       {
-        "action": "Review AWS IAM And Network Runbook / First Checks and compare it with the current incident timeline.",
-        "citation": "docs/runbooks/aws-iam-network.md#first-checks"
+        "action": "Review AWS IAM Role Assumption Wiki / First Checks and compare it with the current incident timeline.",
+        "citation": "docs/wiki/aws-iam-network/role-assumption.md#first-checks"
       }
     ],
     "citations": [
-      "docs/runbooks/aws-iam-network.md#first-checks"
+      "docs/wiki/aws-iam-network/role-assumption.md#first-checks"
     ],
     "safety_notes": [
       "This beta assistant does not execute remediation actions.",
@@ -176,7 +202,7 @@ Example response schema:
 }
 ```
 
-## RAG Evaluation Metrics
+## RAG And Wiki Evaluation Metrics
 
 | Metric | Meaning |
 |---|---|
@@ -184,6 +210,8 @@ Example response schema:
 | `groundedness_score` | Degree to which generated guidance is supported by retrieved evidence |
 | `citation_coverage` | Percentage of recommendations that include at least one citation |
 | `hallucination_flag_rate` | Percentage of assistant responses flagged for unsupported claims |
+| `wiki_source_coverage` | Coverage of Wiki pages by domain, service, and source type |
+| `stale_page_rate` | Percentage of Wiki pages past the expected review window |
 | `retrieval_latency_ms` | Time spent in embedding lookup and retrieval |
 | `generation_latency_ms` | Time spent generating the assistant response |
 
@@ -191,7 +219,8 @@ Example response schema:
 
 - No Vector DB is installed.
 - No production embedding model or managed Vector DB is selected in code.
-- `/retrieve` is implemented as preview local retrieval.
+- `/retrieve` is implemented as preview local retrieval over runbooks and Wiki pages.
 - `/assist` is implemented as a deterministic beta assistant.
 - No external LLM integration is added.
+- No PagerDuty, Confluence, Slack, Notion, or OpenAI API integration is added.
 - Existing classifier-focused implementation remains intact.

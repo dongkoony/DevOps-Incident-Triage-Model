@@ -261,6 +261,12 @@ curl -X POST http://localhost:8000/assist \
 
 The response includes `incident`, `retrieval`, `assistant_response`, and `metadata` sections so the guidance remains auditable and citation-grounded.
 
+### LLM Wiki Preview
+
+`release-2026.08-incident-wiki-preview` introduces a repository-backed LLM Wiki knowledge layer inspired by SRE Agent patterns. Wiki pages organize runbooks, SOP-like checks, diagnostics, and service context with explicit metadata.
+
+This preview does not call an external LLM API. It enriches `/retrieve` and `/assist` evidence with Wiki metadata so future LLM responses can stay citation-grounded.
+
 ## Delivery And Release
 
 This repository follows a lightweight GitFlow-style process:
@@ -304,8 +310,9 @@ Release roadmap:
 | `release-2026.05-classifier-core` | stable | Transformer classifier, FastAPI inference, batch jobs, evaluation reports, Docker, CI |
 | `release-2026.06-rag-preview` | preview | Runbook corpus loading, domain-aware TF-IDF retrieval, preview vector index selection, `/retrieve` API |
 | `release-2026.07-incident-assist-beta` | beta | Classifier + RAG integration, deterministic `/assist` API, evidence citations, LLM-ready response contract |
-| `release-2026.08-eval-observability` | beta | RAG evaluation, groundedness checks, hallucination checks, retrieval/generation latency metrics |
-| `release-2026.09-cloud-stable` | stable | AWS deployment roadmap, production-style service architecture, monitoring, CI/CD release flow |
+| `release-2026.08-incident-wiki-preview` | preview | Repository-backed LLM Wiki, Wiki metadata schema, Wiki-aware retrieval and assist evidence |
+| `release-2026.09-eval-observability` | beta | RAG/Wiki evaluation, groundedness checks, hallucination checks, retrieval/generation latency metrics |
+| `release-2026.10-cloud-stable` | stable | AWS deployment roadmap, production-style service architecture, monitoring, CI/CD release flow |
 
 Concise roadmap:
 
@@ -314,6 +321,7 @@ Concise roadmap:
 | Classifier core | Keep the current Transformer classifier as the stable routing baseline |
 | RAG preview | Retrieve cited runbook evidence with a lightweight local vector index |
 | Incident assistant beta | Combine predicted domain, retrieved evidence, deterministic guidance, and citations |
+| LLM Wiki preview | Organize runbooks, SOP-like checks, diagnostics, and service context as Wiki evidence |
 | Evaluation and observability | Measure retrieval quality, groundedness, citations, latency, and service health |
 | Cloud stable | Document an AWS-ready service shape with monitoring and release operations |
 
@@ -324,6 +332,7 @@ Detailed planning docs:
 - [Classifier core release evidence](docs/releases/release-2026.05-classifier-core.md)
 - [RAG preview release evidence](docs/releases/release-2026.06-rag-preview.md)
 - [Incident assist beta release evidence](docs/releases/release-2026.07-incident-assist-beta.md)
+- [Incident Wiki preview release evidence](docs/releases/release-2026.08-incident-wiki-preview.md)
 - [RAG evaluation plan](docs/evaluation/rag-evaluation.md)
 
 ## Hugging Face Publishing

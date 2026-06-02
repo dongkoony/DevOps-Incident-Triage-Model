@@ -4,9 +4,9 @@
 
 This project uses a product-style release train to describe how the DevOps Incident Triage Model evolves from a classifier-focused MLOps project into a future RAG-powered DevOps Incident Triage Assistant.
 
-The existing Transformer classifier remains the stable baseline. It routes incident text into operational domains such as Kubernetes, CI/CD, AWS IAM/networking, deployment/release, container runtime, observability, and database state. Current release-train work adds retrieval, runbook evidence, deterministic assistant guidance, evaluation, observability, and cloud deployment planning.
+The existing Transformer classifier remains the stable baseline. It routes incident text into operational domains such as Kubernetes, CI/CD, AWS IAM/networking, deployment/release, container runtime, observability, and database state. Current release-train work adds retrieval, runbook evidence, an LLM Wiki knowledge layer, deterministic assistant guidance, evaluation, observability, and cloud deployment planning.
 
-The current backend should still be understood as classifier-first. RAG preview retrieval and deterministic incident-assist beta features are implemented in stages before any production-style LLM integration.
+The current backend should still be understood as classifier-first. RAG preview retrieval, deterministic incident-assist beta features, and the LLM Wiki knowledge layer are implemented in stages before any production-style LLM integration.
 
 The current public starter dataset is synthetic, so model scores should be treated as reproducibility and portfolio evidence rather than validated real-world generalization.
 
@@ -45,6 +45,7 @@ Examples:
 - `release-2026.05-classifier-core`
 - `release-2026.06-rag-preview`
 - `release-2026.07-incident-assist-beta`
+- `release-2026.08-incident-wiki-preview`
 
 This format is intentionally descriptive. It avoids implying that a planned RAG assistant is already production-ready just because a numeric version increased.
 
@@ -55,8 +56,9 @@ This format is intentionally descriptive. It avoids implying that a planned RAG 
 | `release-2026.05-classifier-core` | stable | Current Transformer-based DevOps incident classification, FastAPI inference, batch prediction, async batch jobs, evaluation reports, Docker, and CI workflow | Existing classifier workflows remain reproducible and documented. |
 | `release-2026.06-rag-preview` | preview | Runbook corpus loading, domain-aware TF-IDF retrieval, preview vector index selection, `/retrieve` API, evidence-based retrieval response schema | Retrieval design is documented and implemented as a local preview over placeholder runbooks. |
 | `release-2026.07-incident-assist-beta` | beta | Classifier + RAG integration, deterministic `/assist` API, root cause candidates, recommended remediation actions, evidence citations, LLM-ready response contract | Assistant contract is implemented with tests, citations, metrics, and clear LLM non-goals. |
-| `release-2026.08-eval-observability` | beta | RAG evaluation plan, retrieval hit rate, groundedness checks, hallucination checks, latency metrics, Prometheus-style observability expansion | Evaluation metrics and observability plan are documented and mapped to future implementation points. |
-| `release-2026.09-cloud-stable` | stable | AWS deployment roadmap, production-style FastAPI service, Vector DB deployment option, monitoring, CI/CD release flow, operational documentation | Cloud deployment path has operational docs, monitoring plan, and release process. |
+| `release-2026.08-incident-wiki-preview` | preview | Repository-backed LLM Wiki, Wiki metadata schema, Wiki-aware retrieval and assist evidence | Wiki pages are indexed locally and returned with auditable metadata and citations. |
+| `release-2026.09-eval-observability` | beta | RAG/Wiki evaluation plan, retrieval hit rate, groundedness checks, hallucination checks, latency metrics, Prometheus-style observability expansion | Evaluation metrics and observability plan are documented and mapped to future implementation points. |
+| `release-2026.10-cloud-stable` | stable | AWS deployment roadmap, production-style FastAPI service, Vector DB deployment option, monitoring, CI/CD release flow, operational documentation | Cloud deployment path has operational docs, monitoring plan, and release process. |
 
 ## Promotion Rules
 
